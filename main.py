@@ -1,6 +1,7 @@
 import pymysql
 import os
-from flask import Flask, render_template, request, redirect, url_for
+import uuid
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 
 app = Flask(__name__)
 
@@ -31,7 +32,10 @@ def home():
         return "Database connection failed!", 500
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM bookings")
+        cursor.execute("""
+            SELECT room, room_type, total_price, status, customer, checkin_date, checkout_date 
+            FROM bookings
+        """)
         rooms = cursor.fetchall()
     return render_template("index.html", rooms=rooms)
 
@@ -40,24 +44,14 @@ def book_room():
     """ฟังก์ชันจองห้อง"""
     room = request.form["room"]
     customer = request.form["customer"]
-    phone_number = request.form["phone_number"]
+    phone = request.form["phone"]
     channel = request.form["channel"]
     checkin = request.form["checkin"]
     checkout = request.form["checkout"]
-    room_type = request.form["room_type"]
-    nights = request.form["nights"]
-    total_price = request.form["total_price"]
-    payment_status = request.form["payment_status"]
-    payment_method = request.form["payment_method"]
-    deposit_status = request.form["deposit_status"]
-    payment_date = request.form["payment_date"]
-    payment_proof = request.form["payment_proof"]
-    received_by = request.form["received_by"]
-    discount = request.form["discount"]
-    booking_id = request.form["booking_id"]
-    booking_status = request.form["booking_status"]
-    staff_name = request.form["staff_name"]
-    staff_notes = request.form["staff_notes"]
+    payment = request.form["payment"]
+    
+    # คำนวณจำนวนคืนที่เข้าพัก
+    nights = (pymysql.Date(checkout) - pymysql.Date(checkin)).days
 
     conn = get_db_connection()
     if conn is None:
@@ -65,19 +59,22 @@ def book_room():
 
     with conn.cursor() as cursor:
         cursor.execute("""
-            UPDATE bookings
-            SET customer=%s, phone_number=%s, channel=%s, checkin_date=%s, checkout_date=%s,
-                room_type=%s, nights=%s, total_price=%s, payment_status=%s, payment_method=%s,
-                deposit_status=%s, payment_date=%s, payment_proof=%s, received_by=%s, 
-                discount=%s, booking_id=%s, booking_status=%s, staff_name=%s, staff_notes=%s, status='booked'
-            WHERE room=%s
-        """, (customer, phone_number, channel, checkin, checkout, room_type, nights, total_price,
-              payment_status, payment_method, deposit_status, payment_date, payment_proof,
-              received_by, discount, booking_id, booking_status, staff_name, staff_notes, room))
-        conn.commit()
-    return redirect(url_for("home"))
+            SELECT total_price FROM bookings WHERE room = %s
+        """, (room,))
+        price_per_night = cursor.fetchone()["total_price"]
+        total_price = price_per_night * nights
 
-@app.route("/cancel/<int:room>")
+        cursor.execute("""
+            UPDATE bookings
+            SET customer=%s, phone_number=%s, channel=%s, checkin_date=%s, checkout_date=%s, 
+                nights=%s, total_price=%s, status='booked', payment_method=%s, booking_id=%s
+            WHERE room=%s
+        """, (customer, phone, channel, checkin, checkout, nights, total_price, payment, str(uuid.uuid4()), room))
+        conn.commit()
+    
+    return jsonify({"message": "Booking successful", "room": room})
+
+@app.route("/cancel/<int:room>", methods=["POST"])
 def cancel_booking(room):
     """ฟังก์ชันยกเลิกการจอง"""
     conn = get_db_connection()
@@ -87,14 +84,13 @@ def cancel_booking(room):
     with conn.cursor() as cursor:
         cursor.execute("""
             UPDATE bookings
-            SET customer=NULL, phone_number=NULL, channel=NULL, checkin_date=NULL, checkout_date=NULL,
-                room_type=NULL, nights=NULL, total_price=NULL, payment_status=NULL, payment_method=NULL,
-                deposit_status=NULL, payment_date=NULL, payment_proof=NULL, received_by=NULL, 
-                discount=NULL, booking_id=NULL, booking_status=NULL, staff_name=NULL, staff_notes=NULL, status='available'
+            SET customer=NULL, phone_number=NULL, channel=NULL, checkin_date=NULL, checkout_date=NULL, 
+                nights=NULL, total_price=NULL, status='available', payment_method=NULL, booking_id=NULL
             WHERE room=%s
         """, (room,))
         conn.commit()
-    return redirect(url_for("home"))
+
+    return jsonify({"message": "Booking canceled", "room": room})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -4,12 +4,12 @@ from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
 
-# ใช้ค่าการเชื่อมต่อจาก Environment Variables ของ Railway
+# ดึงค่าการเชื่อมต่อจาก Environment Variables
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),
-    "user": os.getenv("MYSQLUSER", "root"),
-    "password": os.getenv("MYSQLPASSWORD", ""),  # แก้ไขตรงนี้
-    "database": os.getenv("MYSQLDATABASE", "railway"),
+    "host": os.getenv("MYSQLHOST"),
+    "user": os.getenv("MYSQLUSER"),
+    "password": os.getenv("MYSQLPASSWORD"),
+    "database": os.getenv("MYSQLDATABASE"),
     "cursorclass": pymysql.cursors.DictCursor
 }
 

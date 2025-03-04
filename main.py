@@ -8,7 +8,7 @@ app = Flask(__name__)
 DB_CONFIG = {
     "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),
     "user": os.getenv("MYSQLUSER", "root"),
-    "password": os.getenv("MYSQLPASSWORD", ""),
+    "password": os.getenv("MYSQLPASSWORD", "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx"),
     "database": os.getenv("MYSQLDATABASE", "railway"),
     "cursorclass": pymysql.cursors.DictCursor
 }

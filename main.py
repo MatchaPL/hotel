@@ -4,13 +4,13 @@ from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
 
-# ✅ ใช้ค่าการเชื่อมต่อ MySQL จาก Railway
+# ✅ ใช้ค่าการเชื่อมต่อจาก Environment Variables ของ Railway (Private Network)
 DB_CONFIG = {
-    "host": "caboose.proxy.rlwy.net",  # ใช้ค่าจาก Railway
-    "port": 41607,  # ใส่ค่าจาก Railway (เปลี่ยนตามของคุณ)
-    "user": "root",
-    "password": "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx",  # ใช้ค่าจริงจาก Railway
-    "database": "railway",
+    "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),  # ใช้ Private Network
+    "port": int(os.getenv("MYSQLPORT", 3306)),  # ใช้ Port 3306 ตามค่าเริ่มต้น
+    "user": os.getenv("MYSQLUSER", "root"),
+    "password": os.getenv("MYSQLPASSWORD", ""),
+    "database": os.getenv("MYSQLDATABASE", "railway"),
     "cursorclass": pymysql.cursors.DictCursor
 }
 

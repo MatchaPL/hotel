@@ -44,3 +44,16 @@ def book_room():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
+@app.route("/cancel/<int:room>")
+def cancel_booking(room):
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE bookings
+                SET customer=NULL, channel=NULL, checkin_date=NULL, checkout_date=NULL, status='available'
+                WHERE room=%s
+            """, (room,))
+            conn.commit()
+    return redirect(url_for("home"))
+

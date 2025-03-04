@@ -8,7 +8,7 @@ app = Flask(__name__)
 DB_CONFIG = {
     "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),
     "user": os.getenv("MYSQLUSER", "root"),
-    "password": os.getenv("MYSQLPASSWORD", "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx"),
+    "password": os.getenv("MYSQLPASSWORD", ""),  # แก้ไขตรงนี้
     "database": os.getenv("MYSQLDATABASE", "railway"),
     "cursorclass": pymysql.cursors.DictCursor
 }
@@ -42,9 +42,6 @@ def book_room():
             conn.commit()
     return redirect(url_for("home"))
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
 @app.route("/cancel/<int:room>")
 def cancel_booking(room):
     with get_db_connection() as conn:
@@ -57,3 +54,5 @@ def cancel_booking(room):
             conn.commit()
     return redirect(url_for("home"))
 
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

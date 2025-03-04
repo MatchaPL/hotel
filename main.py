@@ -4,9 +4,10 @@ from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
 
+# ✅ ใช้ค่าจาก Railway Environment Variables
 DB_CONFIG = {
     "host": os.getenv("MYSQLHOST", "caboose.proxy.rlwy.net"),
-    "port": int(os.getenv("MYSQLPORT", 41067)),  # ใช้ค่าจาก Environment
+    "port": int(os.getenv("MYSQLPORT", 3306)),  # เปลี่ยนตามค่าใน Railway
     "user": os.getenv("MYSQLUSER", "root"),
     "password": os.getenv("MYSQLPASSWORD", "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx"),
     "database": os.getenv("MYSQLDATABASE", "railway"),
@@ -14,6 +15,7 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
+    """ฟังก์ชันเชื่อมต่อ MySQL"""
     try:
         conn = pymysql.connect(**DB_CONFIG)
         print("✅ Database connected successfully!")
@@ -33,5 +35,42 @@ def home():
         rooms = cursor.fetchall()
     return render_template("index.html", rooms=rooms)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+@app.route("/book", methods=["POST"])
+def book_room():
+    """ฟังก์ชันจองห้อง"""
+    room = request.form["room"]
+    customer = request.form["customer"]
+    channel = request.form["channel"]
+    checkin = request.form["checkin"]
+    checkout = request.form["checkout"]
+
+    conn = get_db_connection()
+    if conn is None:
+        return "Database connection failed!", 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            UPDATE bookings
+            SET customer=%s, channel=%s, checkin_date=%s, checkout_date=%s, status='booked'
+            WHERE room=%s
+        """, (customer, channel, checkin, checkout, room))
+        conn.commit()
+    return redirect(url_for("home"))
+
+@app.route("/cancel/<int:room>")
+def cancel_booking(room):
+    """ฟังก์ชันยกเลิกการจอง"""
+    conn = get_db_connection()
+    if conn is None:
+        return "Database connection failed!", 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            UPDATE bookings
+            SET customer=NULL, channel=NULL, checkin_date=NULL, checkout_date=NULL, status='available'
+            WHERE room=%s
+        """, (room,))
+        conn.commit()
+    return redirect(url_for("home"))
+
+if __name__ == "__main

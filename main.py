@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 # ✅ ใช้ค่าจาก Railway Environment Variables
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST", "caboose.proxy.rlwy.net"),
-    "port": int(os.getenv("MYSQLPORT", 3306)),  # เปลี่ยนตามค่าใน Railway
+    "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),  # ✅ ใช้ Private Network
+    "port": int(os.getenv("MYSQLPORT", 3306)),  # ✅ ใช้ 3306 ตาม Environment Variables
     "user": os.getenv("MYSQLUSER", "root"),
     "password": os.getenv("MYSQLPASSWORD", "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx"),
     "database": os.getenv("MYSQLDATABASE", "railway"),
@@ -73,4 +73,5 @@ def cancel_booking(room):
         conn.commit()
     return redirect(url_for("home"))
 
-if __name__ == "__main
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

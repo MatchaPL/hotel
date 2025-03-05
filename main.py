@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # ✅ ใช้ค่าจาก Railway Environment Variables
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),
+    "host": os.getenv("MYSQLHOST", "mysql-ys-w.railway.internal"),
     "port": int(os.getenv("MYSQLPORT", 3306)),
     "user": os.getenv("MYSQLUSER", "root"),
     "password": os.getenv("MYSQLPASSWORD", "jijDgGGBmVEhxmiDyepJBGLxJGWXJTFF"),

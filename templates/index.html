@@ -23,7 +23,7 @@
     <button class="btn" onclick="openBookingForm()">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <!-- Modal -->
+    <!-- Modal จองห้อง -->
     <div class="modal-overlay" id="overlay"></div>
     <div class="modal" id="bookingModal">
         <h3>Book a Room</h3>
@@ -35,6 +35,10 @@
             <div class="form-group">
                 <label>Phone Number:</label>
                 <input type="text" name="phone" required>
+            </div>
+            <div class="form-group">
+                <label>Room Number:</label>
+                <input type="number" name="room" required>
             </div>
             <div class="form-group">
                 <label>Check-in Date:</label>
@@ -72,7 +76,14 @@
                 initialView: "dayGridMonth",
                 events: "/get_bookings",
                 selectable: true,
-                dateClick: function(info) { openBookingForm(info.dateStr); }
+                dateClick: function(info) { openBookingForm(info.dateStr); },
+                eventClick: function(info) {
+                    if (confirm("Do you want to cancel this booking?")) {
+                        fetch("/cancel/" + info.event.id, { method: "POST" })
+                        .then(response => response.json())
+                        .then(data => { alert(data.message); location.reload(); });
+                    }
+                }
             });
             calendar.render();
         });
@@ -93,7 +104,8 @@
             var formData = new FormData(this);
             fetch("/book", { method: "POST", body: formData })
             .then(response => response.json())
-            .then(data => { alert(data.message); location.reload(); });
+            .then(data => { alert(data.message); location.reload(); })
+            .catch(error => console.error("Error:", error));
         });
     </script>
 

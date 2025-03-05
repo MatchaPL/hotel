@@ -24,22 +24,34 @@ def get_db_connection():
 
 @app.route("/")
 def home():
-    """โหลดข้อมูลห้องพัก"""
+    return render_template("index.html")
+
+@app.route("/get_bookings")
+def get_bookings():
+    """ดึงข้อมูลการจองทั้งหมดมาแสดงบนปฏิทิน"""
     conn = get_db_connection()
     if conn is None:
-        return "Database connection failed!", 500
+        return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM bookings")
-        rooms = cursor.fetchall()
+        cursor.execute("SELECT room, customer, checkin_date, checkout_date FROM bookings WHERE status='booked'")
+        bookings = cursor.fetchall()
+
+    events = []
+    for booking in bookings:
+        events.append({
+            "title": f"Room {booking['room']} - {booking['customer']}",
+            "start": booking["checkin_date"].strftime("%Y-%m-%d"),
+            "end": booking["checkout_date"].strftime("%Y-%m-%d"),
+            "color": "#ff6347"  # สีแดงสำหรับห้องที่ถูกจอง
+        })
     
-    return render_template("index.html", rooms=rooms)
+    return jsonify(events)
 
 @app.route("/book", methods=["POST"])
 def book_room():
     """จองห้อง"""
     try:
-        # รับค่าจากฟอร์ม
         room = request.form.get("room")
         customer = request.form.get("customer")
         phone = request.form.get("phone")
@@ -63,9 +75,6 @@ def book_room():
             proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
             payment_proof.save(os.path.join(app.config["UPLOAD_FOLDER"], proof_filename))
 
-        if not (room and customer and phone and checkin and checkout and payment):
-            return jsonify({"message": "Missing required fields"}), 400
-
         checkin_date = datetime.strptime(checkin, "%Y-%m-%d")
         checkout_date = datetime.strptime(checkout, "%Y-%m-%d")
         nights = (checkout_date - checkin_date).days
@@ -77,9 +86,6 @@ def book_room():
         with conn.cursor() as cursor:
             cursor.execute("SELECT total_price FROM bookings WHERE room = %s", (room,))
             row = cursor.fetchone()
-            if not row:
-                return jsonify({"message": "Room not found"}), 404
-
             price_per_night = row["total_price"] or 0
             total_price = price_per_night * nights
 
@@ -97,10 +103,8 @@ def book_room():
 
         return jsonify({"message": "Booking successful", "room": room})
 
-    except KeyError as e:
-        return jsonify({"error": f"Missing field: {str(e)}"}), 400
-    except ValueError:
-        return jsonify({"message": "Invalid date format"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/cancel/<room>", methods=["POST"])
 def cancel_booking(room):

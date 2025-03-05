@@ -34,17 +34,17 @@ def get_bookings():
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM bookings WHERE status='booked'")
+        cursor.execute("SELECT id, room, customer, checkin_date, checkout_date, booking_status FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
     events = []
     for booking in bookings:
         events.append({
+            "id": booking["id"],
             "title": f"Room {booking['room']} - {booking['customer']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#ff6347",
-            "extendedProps": booking
+            "color": "#ff6347" if booking["booking_status"] == "booked" else "#32CD32"
         })
     
     return jsonify(events)
@@ -53,23 +53,23 @@ def get_bookings():
 def book_room():
     """จองห้อง"""
     try:
-        data = request.form
-        room = data.get("room")
-        customer = data.get("customer")
-        phone = data.get("phone")
-        channel = data.get("channel", "")
-        checkin = data.get("checkin")
-        checkout = data.get("checkout")
-        payment_method = data.get("payment_method")
-        room_type = data.get("room_type")
-        payment_status = data.get("payment_status")
-        deposit_status = data.get("deposit_status")
-        payment_date = data.get("payment_date")
-        received_by = data.get("received_by")
-        discount = data.get("discount", "0")
-        booking_status = data.get("booking_status")
-        staff_name = data.get("staff_name")
+        room = request.form.get("room")
+        customer = request.form.get("customer")
+        phone = request.form.get("phone")
+        channel = request.form.get("channel", "")
+        checkin = request.form.get("checkin")
+        checkout = request.form.get("checkout")
+        payment = request.form.get("payment_method")
+        room_type = request.form.get("room_type")
+        payment_status = request.form.get("payment_status")
+        deposit_status = request.form.get("deposit_status")
+        payment_date = request.form.get("payment_date")
+        received_by = request.form.get("received_by")
+        discount = request.form.get("discount", "0")
+        booking_status = request.form.get("booking_status")
+        staff_name = request.form.get("staff_name")
 
+        # อัปโหลดหลักฐานการชำระเงิน
         payment_proof = request.files.get("payment_proof")
         proof_filename = None
         if payment_proof:
@@ -87,25 +87,63 @@ def book_room():
         with conn.cursor() as cursor:
             cursor.execute("SELECT total_price FROM bookings WHERE room = %s", (room,))
             row = cursor.fetchone()
-            price_per_night = row["total_price"] or 0
+            price_per_night = row["total_price"] if row and row["total_price"] else 0
             total_price = price_per_night * nights
 
             cursor.execute("""
-                UPDATE bookings
-                SET customer=%s, phone_number=%s, channel=%s, checkin_date=%s, checkout_date=%s, 
-                    nights=%s, total_price=%s, status='booked', payment_method=%s, booking_id=%s,
-                    room_type=%s, payment_status=%s, deposit_status=%s, payment_date=%s,
-                    received_by=%s, discount=%s, booking_status=%s, staff_name=%s, payment_proof=%s
-                WHERE room=%s
-            """, (customer, phone, channel, checkin, checkout, nights, total_price, payment_method, str(uuid.uuid4()),
-                  room_type, payment_status, deposit_status, payment_date, received_by, discount, 
-                  booking_status, staff_name, proof_filename, room))
+                INSERT INTO bookings (room, customer, phone_number, channel, checkin_date, checkout_date, 
+                    nights, total_price, status, payment_method, booking_id, room_type, payment_status, 
+                    deposit_status, payment_date, received_by, discount, booking_status, staff_name, payment_proof)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'booked', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (room, customer, phone, channel, checkin_date, checkout_date, nights, total_price, 
+                  payment, str(uuid.uuid4()), room_type, payment_status, deposit_status, payment_date, 
+                  received_by, discount, booking_status, staff_name, proof_filename))
             conn.commit()
 
         return jsonify({"message": "Booking successful", "room": room})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/edit_booking", methods=["POST"])
+def edit_booking():
+    """แก้ไขการจอง"""
+    try:
+        booking_id = request.form.get("booking_id")
+        customer = request.form.get("customer")
+        phone = request.form.get("phone")
+        checkin = request.form.get("checkin")
+        checkout = request.form.get("checkout")
+
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"message": "Database connection failed!"}), 500
+
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE bookings 
+                SET customer=%s, phone_number=%s, checkin_date=%s, checkout_date=%s 
+                WHERE booking_id=%s
+            """, (customer, phone, checkin, checkout, booking_id))
+            conn.commit()
+
+        return jsonify({"message": "Booking updated successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
+def cancel_booking(booking_id):
+    """ยกเลิกการจอง"""
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"message": "Database connection failed!"}), 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("UPDATE bookings SET status='available', customer=NULL, checkin_date=NULL, checkout_date=NULL WHERE id=%s", (booking_id,))
+        conn.commit()
+    
+    return jsonify({"message": "Booking cancelled", "booking_id": booking_id})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

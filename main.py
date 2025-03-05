@@ -1,7 +1,8 @@
 import pymysql
 import os
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
@@ -33,10 +34,12 @@ def home():
 
     with conn.cursor() as cursor:
         cursor.execute("""
-            SELECT room, room_type, total_price, status, customer, checkin_date, checkout_date 
+            SELECT room, room_type, total_price AS room_price, status, customer, phone_number, checkin_date, checkout_date 
             FROM bookings
         """)
         rooms = cursor.fetchall()
+    conn.close()
+    
     return render_template("index.html", rooms=rooms)
 
 @app.route("/book", methods=["POST"])
@@ -50,18 +53,24 @@ def book_room():
     checkout = request.form["checkout"]
     payment = request.form["payment"]
     
-    # คำนวณจำนวนคืนที่เข้าพัก
-    nights = (pymysql.Date(checkout) - pymysql.Date(checkin)).days
+    try:
+        checkin_date = datetime.strptime(checkin, "%Y-%m-%d")
+        checkout_date = datetime.strptime(checkout, "%Y-%m-%d")
+        nights = (checkout_date - checkin_date).days
+    except ValueError:
+        return jsonify({"message": "Invalid date format"}), 400
 
     conn = get_db_connection()
     if conn is None:
         return "Database connection failed!", 500 
 
     with conn.cursor() as cursor:
-        cursor.execute("""
-            SELECT total_price FROM bookings WHERE room = %s
-        """, (room,))
-        price_per_night = cursor.fetchone()["total_price"]
+        cursor.execute("SELECT total_price FROM bookings WHERE room = %s", (room,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"message": "Room not found"}), 404
+
+        price_per_night = row["total_price"]
         total_price = price_per_night * nights
 
         cursor.execute("""

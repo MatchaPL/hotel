@@ -34,16 +34,18 @@ def get_bookings():
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT room, customer, checkin_date, checkout_date FROM bookings WHERE status='booked'")
+        cursor.execute("SELECT * FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
     events = []
     for booking in bookings:
         events.append({
+            "id": booking["booking_id"],
             "title": f"Room {booking['room']} - {booking['customer']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#ff6347"  # Red for booked rooms
+            "color": "#ff6347",
+            "extendedProps": booking
         })
     
     return jsonify(events)
@@ -52,59 +54,53 @@ def get_bookings():
 def book_room():
     """Book a room"""
     try:
-        room = request.form.get("room")
-        customer = request.form.get("customer")
-        phone = request.form.get("phone")
-        channel = request.form.get("channel", "")
-        checkin = request.form.get("checkin")
-        checkout = request.form.get("checkout")
-        payment = request.form.get("payment")
-        room_type = request.form.get("room_type")
-        payment_status = request.form.get("payment_status")
-        deposit_status = request.form.get("deposit_status")
-        payment_date = request.form.get("payment_date")
-        received_by = request.form.get("received_by")
-        discount = request.form.get("discount", "0")
-        booking_status = request.form.get("booking_status")
-        staff_name = request.form.get("staff_name")
+        data = request.form.to_dict()
+        data['booking_id'] = str(uuid.uuid4())
+        data['nights'] = (datetime.strptime(data["checkout"], "%Y-%m-%d") - datetime.strptime(data["checkin"], "%Y-%m-%d")).days
+        data['total_price'] = float(data.get('total_price', 0))
 
-        # Upload payment proof
-        payment_proof = request.files.get("payment_proof")
-        proof_filename = None
-        if payment_proof:
-            proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
-            payment_proof.save(os.path.join(app.config["UPLOAD_FOLDER"], proof_filename))
-
-        checkin_date = datetime.strptime(checkin, "%Y-%m-%d")
-        checkout_date = datetime.strptime(checkout, "%Y-%m-%d")
-        nights = (checkout_date - checkin_date).days
+        # Upload Payment Proof
+        if 'payment_proof' in request.files:
+            file = request.files['payment_proof']
+            if file.filename:
+                filename = f"{uuid.uuid4()}_{file.filename}"
+                file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+                data['payment_proof'] = filename
 
         conn = get_db_connection()
         if conn is None:
             return jsonify({"message": "Database connection failed!"}), 500
 
         with conn.cursor() as cursor:
-            cursor.execute("SELECT total_price FROM bookings WHERE room = %s", (room,))
-            row = cursor.fetchone()
-            price_per_night = row["total_price"] or 0
-            total_price = price_per_night * nights
-
             cursor.execute("""
-                UPDATE bookings
-                SET customer=%s, phone_number=%s, channel=%s, checkin_date=%s, checkout_date=%s, 
-                    nights=%s, total_price=%s, status='booked', payment_method=%s, booking_id=%s,
-                    room_type=%s, payment_status=%s, deposit_status=%s, payment_date=%s,
-                    received_by=%s, discount=%s, booking_status=%s, staff_name=%s, payment_proof=%s
-                WHERE room=%s
-            """, (customer, phone, channel, checkin, checkout, nights, total_price, payment, str(uuid.uuid4()),
-                  room_type, payment_status, deposit_status, payment_date, received_by, discount, 
-                  booking_status, staff_name, proof_filename, room))
+                INSERT INTO bookings 
+                (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
+                phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
+                payment_proof, received_by, discount, booking_status, staff_name) 
+                VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
+                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
+                %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
+                %(booking_status)s, %(staff_name)s)
+            """, data)
             conn.commit()
 
-        return jsonify({"message": "Booking successful", "room": room})
+        return jsonify({"message": "Booking successful", "room": data['room']})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/cancel/<booking_id>", methods=["POST"])
+def cancel_booking(booking_id):
+    """Cancel a booking"""
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"message": "Database connection failed!"}), 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("DELETE FROM bookings WHERE booking_id = %s", (booking_id,))
+        conn.commit()
+    
+    return jsonify({"message": "Booking cancelled", "booking_id": booking_id})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

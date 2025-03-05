@@ -28,13 +28,13 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """ดึงข้อมูลการจองมาแสดงบนปฏิทิน"""
+    """ดึงข้อมูลการจองทั้งหมด"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT id, room, customer, checkin_date, checkout_date, booking_status FROM bookings WHERE status='booked'")
+        cursor.execute("SELECT id, room, customer, checkin_date, checkout_date FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
     events = []
@@ -44,26 +44,23 @@ def get_bookings():
             "title": f"Room {booking['room']} - {booking['customer']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#ff6347" if booking["booking_status"] == "booked" else "#32CD32"
+            "color": "#ff6347"
         })
     
     return jsonify(events)
 
 @app.route("/book", methods=["POST"])
 def book_room():
-    """จองห้อง"""
+    """เพิ่มการจองใหม่"""
     try:
         room = request.form.get("room")
         customer = request.form.get("customer")
         phone = request.form.get("phone")
         checkin = request.form.get("checkin")
         checkout = request.form.get("checkout")
-        payment_method = request.form.get("payment_method")
-        room_type = request.form.get("room_type")
 
         checkin_date = datetime.strptime(checkin, "%Y-%m-%d")
         checkout_date = datetime.strptime(checkout, "%Y-%m-%d")
-        nights = (checkout_date - checkin_date).days
 
         conn = get_db_connection()
         if conn is None:
@@ -71,13 +68,35 @@ def book_room():
 
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO bookings (room, customer, phone_number, checkin_date, checkout_date, 
-                    nights, status, payment_method, room_type, booking_status)
-                VALUES (%s, %s, %s, %s, %s, %s, 'booked', %s, %s, 'booked')
-            """, (room, customer, phone, checkin_date, checkout_date, nights, payment_method, room_type))
+                INSERT INTO bookings (room, customer, phone_number, checkin_date, checkout_date, status)
+                VALUES (%s, %s, %s, %s, %s, 'booked')
+            """, (room, customer, phone, checkin_date, checkout_date))
             conn.commit()
 
-        return jsonify({"message": "Booking successful", "room": room})
+        return jsonify({"message": "Booking successful"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/update_booking", methods=["POST"])
+def update_booking():
+    """อัปเดตวันจองเมื่อมีการลาก Event"""
+    try:
+        booking_id = request.form.get("id")
+        new_checkin = request.form.get("start")
+        new_checkout = request.form.get("end")
+
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"message": "Database connection failed!"}), 500
+
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE bookings SET checkin_date=%s, checkout_date=%s WHERE id=%s
+            """, (new_checkin, new_checkout, booking_id))
+            conn.commit()
+
+        return jsonify({"message": "Booking updated successfully"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -93,7 +112,7 @@ def cancel_booking(booking_id):
         cursor.execute("UPDATE bookings SET status='available' WHERE id=%s", (booking_id,))
         conn.commit()
     
-    return jsonify({"message": "Booking cancelled", "booking_id": booking_id})
+    return jsonify({"message": "Booking cancelled"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

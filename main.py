@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
 
-# Connect to MySQL Database
+# Database connection
 def get_db_connection():
     try:
         return pymysql.connect(
@@ -28,30 +28,29 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """Fetch bookings and display them in the calendar"""
+    """Retrieve all bookings for the calendar"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM bookings WHERE status='booked'")
+        cursor.execute("SELECT room, customer, checkin_date, checkout_date FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
     events = []
     for booking in bookings:
         events.append({
-            "id": booking["id"],
             "title": f"Room {booking['room']} - {booking['customer']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#ff6347"  # Highlighted color for booked rooms
+            "color": "#ff6347"  # Red for booked rooms
         })
     
     return jsonify(events)
 
 @app.route("/book", methods=["POST"])
 def book_room():
-    """Create a new booking"""
+    """Book a room"""
     try:
         room = request.form.get("room")
         customer = request.form.get("customer")
@@ -69,7 +68,7 @@ def book_room():
         booking_status = request.form.get("booking_status")
         staff_name = request.form.get("staff_name")
 
-        # Handle file upload
+        # Upload payment proof
         payment_proof = request.files.get("payment_proof")
         proof_filename = None
         if payment_proof:

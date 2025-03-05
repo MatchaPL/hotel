@@ -4,72 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Booking Calendar</title>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            background: #f3f3f3;
-        }
-        #calendar { 
-            max-width: 80%; 
-            margin: auto; 
-            background: white; 
-            padding: 20px; 
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-        }
-        .fc-event { 
-            cursor: pointer; 
-            background: #ff7f7f !important; 
-            border: none; 
-            border-radius: 5px;
-        }
-    </style>
-</head>
-<body>
-    <h2>Hotel Booking Calendar</h2>
-    <button onclick="openBookingForm()">+ Add Booking</button>
-    <div id="calendar"></div>
-
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@5.10.1/main.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            let calendarEl = document.getElementById('calendar');
-            let calendar = new FullCalendar.Calendar(calendarEl, {
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                themeSystem: 'bootstrap',
+                selectable: true,
                 events: '/get_bookings',
-                dateClick: function(info) { openBookingForm(info.dateStr); }
+                dateClick: function(info) {
+                    openBookingForm(info.dateStr);
+                }
             });
             calendar.render();
         });
 
-        function openBookingForm(date = '') {
-            let customer = prompt("Customer Name:");
-            let phone = prompt("Phone Number:");
-            let room = prompt("Room Number:");
-            let channel = prompt("Booking Channel:");
-            let checkin = date || prompt("Check-in Date (YYYY-MM-DD):");
-            let checkout = prompt("Check-out Date (YYYY-MM-DD):");
-            let payment = prompt("Payment Method:");
-            let staff_name = prompt("Staff Name:");
+        function openBookingForm(date) {
+            let formHTML = `
+                <form id="bookingForm">
+                    <label>Customer Name:</label><input type="text" name="customer" required><br>
+                    <label>Room Number:</label><input type="text" name="room" required><br>
+                    <label>Check-in Date:</label><input type="date" name="checkin" value="${date}" required><br>
+                    <label>Check-out Date:</label><input type="date" name="checkout" required><br>
+                    <button type="submit">Confirm Booking</button>
+                </form>
+            `;
+            document.getElementById("formContainer").innerHTML = formHTML;
+            document.getElementById("bookingForm").addEventListener("submit", submitBooking);
+        }
 
-            if (customer && phone && room && checkin && checkout) {
-                fetch('/book', {
-                    method: 'POST',
-                    body: new URLSearchParams({
-                        customer: customer, phone: phone, room: room, channel: channel, 
-                        checkin: checkin, checkout: checkout, payment: payment, staff_name: staff_name
-                    }),
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                }).then(res => res.json()).then(data => {
-                    alert(data.message);
-                    location.reload();
-                });
-            }
+        function submitBooking(event) {
+            event.preventDefault();
+            let formData = new FormData(event.target);
+            fetch('/book', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
         }
     </script>
+</head>
+<body>
+    <h1>Hotel Booking Calendar</h1>
+    <div id="calendar"></div>
+    <div id="formContainer"></div>
 </body>
 </html>

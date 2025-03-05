@@ -29,58 +29,6 @@
         {% endfor %}
     </div>
 
-    <!-- Booking Form Modal -->
-    <div id="bookingForm" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Book a Room</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="bookingFormSubmit">
-                        <input type="hidden" id="roomNumber" name="room">
-                        <div class="mb-3">
-                            <label class="form-label">Customer Name</label>
-                            <input type="text" class="form-control" id="customer" name="customer" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone" name="phone" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Booking Channel</label>
-                            <select class="form-control" id="channel" name="channel" required>
-                                <option value="Phone">Phone</option>
-                                <option value="LINE">LINE</option>
-                                <option value="Facebook">Facebook</option>
-                                <option value="Website">Website</option>
-                                <option value="Walk-in">Walk-in</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Check-in Date</label>
-                            <input type="date" class="form-control" id="checkin" name="checkin" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Check-out Date</label>
-                            <input type="date" class="form-control" id="checkout" name="checkout" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method</label>
-                            <select class="form-control" id="payment" name="payment" required>
-                                <option value="Transfer">Bank Transfer</option>
-                                <option value="Credit Card">Credit Card</option>
-                                <option value="Cash">Cash</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100">Confirm Booking</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         function openBookingForm(room) {
             document.getElementById('roomNumber').value = room;
@@ -90,17 +38,25 @@
         function cancelBooking(room) {
             fetch(`/cancel/${room}`, { method: 'POST' })
                 .then(response => response.json())
-                .then(data => alert(data.message))
-                .then(() => location.reload());
+                .then(data => {
+                    console.log(data);
+                    alert(data.message);
+                    location.reload();
+                });
         }
 
         document.getElementById('bookingFormSubmit').addEventListener('submit', function(event) {
             event.preventDefault();
             const formData = new FormData(this);
+            console.log("Submitting booking:", Object.fromEntries(formData.entries()));
+
             fetch('/book', { method: 'POST', body: formData })
                 .then(response => response.json())
-                .then(data => alert(data.message))
-                .then(() => location.reload());
+                .then(data => {
+                    console.log(data);
+                    alert(data.message);
+                    location.reload();
+                });
         });
     </script>
 

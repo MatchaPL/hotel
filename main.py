@@ -10,7 +10,7 @@ DB_CONFIG = {
     "host": os.getenv("MYSQLHOST", "mysql.railway.internal"),
     "port": int(os.getenv("MYSQLPORT", 3306)),
     "user": os.getenv("MYSQLUSER", "root"),
-    "password": os.getenv("MYSQLPASSWORD", "oLkYXKYWsZLVFVzXdKCDhIENAZovNBUx"),
+    "password": os.getenv("MYSQLPASSWORD", "jijDgGGBmVEhxmiDyepJBGLxJGWXJTFF"),
     "database": os.getenv("MYSQLDATABASE", "railway"),
     "cursorclass": pymysql.cursors.DictCursor
 }
@@ -55,7 +55,7 @@ def book_room():
 
     conn = get_db_connection()
     if conn is None:
-        return "Database connection failed!", 500
+        return "Database connection failed!", 500 
 
     with conn.cursor() as cursor:
         cursor.execute("""

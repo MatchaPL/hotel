@@ -40,7 +40,17 @@
             initialView: 'dayGridMonth',
             events: "/get_bookings",
             selectable: true,
-            select: function(info) { openBookingForm(info.startStr); }
+            select: function(info) { openBookingForm(info.startStr); },
+            eventClick: function(info) { 
+                if (confirm(`Cancel booking for ${info.event.title}?`)) {
+                    fetch(`/cancel/${info.event.id}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            alert(data.message);
+                            location.reload();
+                        });
+                }
+            }
         });
         calendar.render();
     });

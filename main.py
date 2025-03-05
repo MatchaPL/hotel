@@ -28,7 +28,7 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """Fetch bookings for the calendar"""
+    """Fetch all bookings for FullCalendar"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])

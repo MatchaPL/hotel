@@ -4,17 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Booking Calendar</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
     <style>
-        body { font-family: "Poppins", sans-serif; background: #f4f4f4; text-align: center; }
-        h2 { margin-top: 20px; }
-        #calendar { max-width: 900px; margin: auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; width: 400px; box-shadow: 0px 0px 10px gray; }
-        .btn { background: #007bff; color: white; padding: 10px; border: none; cursor: pointer; margin: 5px; border-radius: 5px; }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #calendar { max-width: 900px; margin: auto; padding: 10px; }
+        .btn { background: #007bff; color: white; padding: 10px; border: none; cursor: pointer; margin: 5px; }
         .btn-danger { background: red; }
-        .form-group { text-align: left; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -24,48 +20,15 @@
     <div id="calendar"></div>
 
     <!-- Modal จองห้อง -->
-    <div class="modal-overlay" id="overlay"></div>
-    <div class="modal" id="bookingModal">
+    <div id="bookingModal" style="display: none;">
         <h3>Book a Room</h3>
         <form id="bookingForm">
-            <div class="form-group">
-                <label>Customer Name:</label>
-                <input type="text" name="customer" required>
-            </div>
-            <div class="form-group">
-                <label>Phone Number:</label>
-                <input type="text" name="phone" required>
-            </div>
-            <div class="form-group">
-                <label>Room Number:</label>
-                <input type="number" name="room" required>
-            </div>
-            <div class="form-group">
-                <label>Check-in Date:</label>
-                <input type="date" name="checkin" required>
-            </div>
-            <div class="form-group">
-                <label>Check-out Date:</label>
-                <input type="date" name="checkout" required>
-            </div>
-            <div class="form-group">
-                <label>Room Type:</label>
-                <select name="room_type">
-                    <option value="Standard">Standard</option>
-                    <option value="Deluxe">Deluxe</option>
-                    <option value="Suite">Suite</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Payment Method:</label>
-                <select name="payment_method">
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cash">Cash</option>
-                </select>
-            </div>
+            <input type="text" name="customer" placeholder="Customer Name" required>
+            <input type="text" name="phone" placeholder="Phone Number" required>
+            <input type="number" name="room" placeholder="Room Number" required>
+            <input type="date" name="checkin" required>
+            <input type="date" name="checkout" required>
             <button type="submit" class="btn">Confirm Booking</button>
-            <button type="button" class="btn btn-danger" onclick="closeBookingForm()">Cancel</button>
         </form>
     </div>
 
@@ -74,11 +37,22 @@
             var calendarEl = document.getElementById("calendar");
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
-                events: "/get_bookings",
+                editable: true,
                 selectable: true,
-                dateClick: function(info) { openBookingForm(info.dateStr); },
+                events: "/get_bookings",
+                eventDrop: function(info) {
+                    fetch("/update_booking", {
+                        method: "POST",
+                        body: new URLSearchParams({
+                            id: info.event.id,
+                            start: info.event.startStr,
+                            end: info.event.endStr
+                        })
+                    }).then(response => response.json())
+                    .then(data => alert(data.message));
+                },
                 eventClick: function(info) {
-                    if (confirm("Do you want to cancel this booking?")) {
+                    if (confirm("Cancel this booking?")) {
                         fetch("/cancel/" + info.event.id, { method: "POST" })
                         .then(response => response.json())
                         .then(data => { alert(data.message); location.reload(); });
@@ -88,24 +62,15 @@
             calendar.render();
         });
 
-        function openBookingForm(date = null) {
-            document.getElementById("overlay").style.display = "block";
+        function openBookingForm() {
             document.getElementById("bookingModal").style.display = "block";
-            if (date) { document.querySelector("[name='checkin']").value = date; }
-        }
-
-        function closeBookingForm() {
-            document.getElementById("overlay").style.display = "none";
-            document.getElementById("bookingModal").style.display = "none";
         }
 
         document.getElementById("bookingForm").addEventListener("submit", function(event) {
             event.preventDefault();
-            var formData = new FormData(this);
-            fetch("/book", { method: "POST", body: formData })
+            fetch("/book", { method: "POST", body: new FormData(this) })
             .then(response => response.json())
-            .then(data => { alert(data.message); location.reload(); })
-            .catch(error => console.error("Error:", error));
+            .then(data => { alert(data.message); location.reload(); });
         });
     </script>
 

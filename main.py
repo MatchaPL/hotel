@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static/uploads"
 
-# Database connection
+# Database Connection
 def get_db_connection():
     try:
         return pymysql.connect(
@@ -28,7 +28,7 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """Retrieve all bookings for the calendar"""
+    """Fetch bookings for the calendar"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
@@ -40,8 +40,8 @@ def get_bookings():
     events = []
     for booking in bookings:
         events.append({
-            "id": booking["booking_id"],
-            "title": f"Room {booking['room']} - {booking['customer']}",
+            "id": booking["id"],
+            "title": f"{booking['customer']} - {booking['room_type']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
             "color": "#ff6347",
@@ -55,17 +55,15 @@ def book_room():
     """Book a room"""
     try:
         data = request.form.to_dict()
-        data['booking_id'] = str(uuid.uuid4())
-        data['nights'] = (datetime.strptime(data["checkout"], "%Y-%m-%d") - datetime.strptime(data["checkin"], "%Y-%m-%d")).days
-        data['total_price'] = float(data.get('total_price', 0))
+        data["booking_id"] = str(uuid.uuid4())
 
-        # Upload Payment Proof
-        if 'payment_proof' in request.files:
-            file = request.files['payment_proof']
-            if file.filename:
-                filename = f"{uuid.uuid4()}_{file.filename}"
-                file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-                data['payment_proof'] = filename
+        payment_proof = request.files.get("payment_proof")
+        if payment_proof:
+            proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
+            payment_proof.save(os.path.join(app.config["UPLOAD_FOLDER"], proof_filename))
+            data["payment_proof"] = proof_filename
+        else:
+            data["payment_proof"] = None
 
         conn = get_db_connection()
         if conn is None:
@@ -73,8 +71,7 @@ def book_room():
 
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO bookings 
-                (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
+                INSERT INTO bookings (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
                 phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
                 payment_proof, received_by, discount, booking_status, staff_name) 
                 VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
@@ -84,12 +81,12 @@ def book_room():
             """, data)
             conn.commit()
 
-        return jsonify({"message": "Booking successful", "room": data['room']})
+        return jsonify({"message": "Booking successful", "room": data["room"]})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/cancel/<booking_id>", methods=["POST"])
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
     """Cancel a booking"""
     conn = get_db_connection()
@@ -97,10 +94,10 @@ def cancel_booking(booking_id):
         return jsonify({"message": "Database connection failed!"}), 500
 
     with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM bookings WHERE booking_id = %s", (booking_id,))
+        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
         conn.commit()
-    
-    return jsonify({"message": "Booking cancelled", "booking_id": booking_id})
+
+    return jsonify({"message": "Booking cancelled"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

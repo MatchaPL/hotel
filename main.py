@@ -37,13 +37,17 @@ def home():
 def book_room():
     """จองห้อง"""
     try:
-        room = request.form["room"]
-        customer = request.form["customer"]
-        phone = request.form["phone"]
-        channel = request.form["channel"]
-        checkin = request.form["checkin"]
-        checkout = request.form["checkout"]
-        payment = request.form["payment"]
+        # รับค่าจากฟอร์ม
+        room = request.form.get("room")
+        customer = request.form.get("customer")
+        phone = request.form.get("phone")
+        channel = request.form.get("channel", "")
+        checkin = request.form.get("checkin")
+        checkout = request.form.get("checkout")
+        payment = request.form.get("payment")
+
+        if not (room and customer and phone and checkin and checkout and payment):
+            return jsonify({"message": "Missing required fields"}), 400
 
         checkin_date = datetime.strptime(checkin, "%Y-%m-%d")
         checkout_date = datetime.strptime(checkout, "%Y-%m-%d")
@@ -59,7 +63,7 @@ def book_room():
             if not row:
                 return jsonify({"message": "Room not found"}), 404
 
-            price_per_night = row["total_price"]
+            price_per_night = row["total_price"] or 0
             total_price = price_per_night * nights
 
             cursor.execute("""
@@ -91,4 +95,4 @@ def cancel_booking(room):
     return jsonify({"message": "Booking cancelled", "room": room})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

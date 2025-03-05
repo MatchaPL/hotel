@@ -2,52 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hotel Booking Calendar</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.js"></script>
 </head>
 <body>
-    <h2 class="text-center my-4">Hotel Booking Calendar</h2>
+    <h2>Hotel Booking Calendar</h2>
+    <button onclick="openBookingForm()">+ Add Booking</button>
     <div id="calendar"></div>
+
+    <div id="bookingModal" style="display:none;">
+        <form id="bookingForm">
+            <label>Customer Name:</label>
+            <input type="text" id="customer" required><br>
+            <label>Phone Number:</label>
+            <input type="text" id="phone" required><br>
+            <label>Check-in Date:</label>
+            <input type="date" id="checkin" required><br>
+            <label>Check-out Date:</label>
+            <input type="date" id="checkout" required><br>
+            <label>Payment Method:</label>
+            <select id="payment_method">
+                <option value="Credit Card">Credit Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash">Cash</option>
+            </select><br>
+            <button type="submit">Confirm Booking</button>
+        </form>
+    </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            let calendarEl = document.getElementById("calendar");
-            let calendar = new FullCalendar.Calendar(calendarEl, {
+            var calendarEl = document.getElementById("calendar");
+            var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
+                events: "/get_bookings",
                 selectable: true,
+                dateClick: function(info) {
+                    document.getElementById("bookingModal").style.display = "block";
+                    document.getElementById("checkin").value = info.dateStr;
+                },
                 eventClick: function(info) {
                     alert("Booking: " + info.event.title);
-                },
-                dateClick: function(info) {
-                    let room = prompt("Enter room number to book:");
-                    if (room) {
-                        let checkin = info.dateStr;
-                        let checkout = prompt("Enter checkout date (YYYY-MM-DD):");
-                        let customer = prompt("Enter customer name:");
-
-                        fetch("/book", {
-                            method: "POST",
-                            body: new URLSearchParams({
-                                room: room,
-                                checkin: checkin,
-                                checkout: checkout,
-                                customer: customer,
-                                phone: "0000000000",  // ป้องกันค่า null
-                                payment: "Cash",
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            alert(data.message);
-                            calendar.refetchEvents();
-                        });
-                    }
-                },
-                events: "/get_bookings"
+                }
             });
             calendar.render();
+        });
+
+        function openBookingForm() {
+            document.getElementById("bookingModal").style.display = "block";
+        }
+
+        document.getElementById("bookingForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            fetch("/book", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
         });
     </script>
 </body>

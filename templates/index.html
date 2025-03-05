@@ -4,75 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Booking Calendar</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #calendar { max-width: 900px; margin: auto; padding: 10px; }
-        .btn { background: #007bff; color: white; padding: 10px; border: none; cursor: pointer; margin: 5px; }
-        .btn-danger { background: red; }
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background: #f3f3f3;
+        }
+        #calendar { 
+            max-width: 80%; 
+            margin: auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        }
+        .fc-event { 
+            cursor: pointer; 
+            background: #ff7f7f !important; 
+            border: none; 
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-
     <h2>Hotel Booking Calendar</h2>
-    <button class="btn" onclick="openBookingForm()">+ Add Booking</button>
+    <button onclick="openBookingForm()">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <!-- Modal จองห้อง -->
-    <div id="bookingModal" style="display: none;">
-        <h3>Book a Room</h3>
-        <form id="bookingForm">
-            <input type="text" name="customer" placeholder="Customer Name" required>
-            <input type="text" name="phone" placeholder="Phone Number" required>
-            <input type="number" name="room" placeholder="Room Number" required>
-            <input type="date" name="checkin" required>
-            <input type="date" name="checkout" required>
-            <button type="submit" class="btn">Confirm Booking</button>
-        </form>
-    </div>
-
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var calendarEl = document.getElementById("calendar");
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: "dayGridMonth",
-                editable: true,
-                selectable: true,
-                events: "/get_bookings",
-                eventDrop: function(info) {
-                    fetch("/update_booking", {
-                        method: "POST",
-                        body: new URLSearchParams({
-                            id: info.event.id,
-                            start: info.event.startStr,
-                            end: info.event.endStr
-                        })
-                    }).then(response => response.json())
-                    .then(data => alert(data.message));
-                },
-                eventClick: function(info) {
-                    if (confirm("Cancel this booking?")) {
-                        fetch("/cancel/" + info.event.id, { method: "POST" })
-                        .then(response => response.json())
-                        .then(data => { alert(data.message); location.reload(); });
-                    }
-                }
+        document.addEventListener('DOMContentLoaded', function () {
+            let calendarEl = document.getElementById('calendar');
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                themeSystem: 'bootstrap',
+                events: '/get_bookings',
+                dateClick: function(info) { openBookingForm(info.dateStr); }
             });
             calendar.render();
         });
 
-        function openBookingForm() {
-            document.getElementById("bookingModal").style.display = "block";
+        function openBookingForm(date = '') {
+            let customer = prompt("Customer Name:");
+            let phone = prompt("Phone Number:");
+            let room = prompt("Room Number:");
+            let channel = prompt("Booking Channel:");
+            let checkin = date || prompt("Check-in Date (YYYY-MM-DD):");
+            let checkout = prompt("Check-out Date (YYYY-MM-DD):");
+            let payment = prompt("Payment Method:");
+            let staff_name = prompt("Staff Name:");
+
+            if (customer && phone && room && checkin && checkout) {
+                fetch('/book', {
+                    method: 'POST',
+                    body: new URLSearchParams({
+                        customer: customer, phone: phone, room: room, channel: channel, 
+                        checkin: checkin, checkout: checkout, payment: payment, staff_name: staff_name
+                    }),
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                }).then(res => res.json()).then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+            }
         }
-
-        document.getElementById("bookingForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            fetch("/book", { method: "POST", body: new FormData(this) })
-            .then(response => response.json())
-            .then(data => { alert(data.message); location.reload(); });
-        });
     </script>
-
 </body>
 </html>

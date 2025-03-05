@@ -2,8 +2,10 @@ from flask import Flask, render_template, request, jsonify
 import pymysql
 from datetime import datetime
 import uuid
+import os
 
 app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = "static/uploads"
 
 # เชื่อมต่อฐานข้อมูล
 def get_db_connection():
@@ -45,6 +47,21 @@ def book_room():
         checkin = request.form.get("checkin")
         checkout = request.form.get("checkout")
         payment = request.form.get("payment")
+        room_type = request.form.get("room_type")
+        payment_status = request.form.get("payment_status")
+        deposit_status = request.form.get("deposit_status")
+        payment_date = request.form.get("payment_date")
+        received_by = request.form.get("received_by")
+        discount = request.form.get("discount", "0")
+        booking_status = request.form.get("booking_status")
+        staff_name = request.form.get("staff_name")
+
+        # อัปโหลดไฟล์หลักฐานการชำระเงิน
+        payment_proof = request.files.get("payment_proof")
+        proof_filename = None
+        if payment_proof:
+            proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
+            payment_proof.save(os.path.join(app.config["UPLOAD_FOLDER"], proof_filename))
 
         if not (room and customer and phone and checkin and checkout and payment):
             return jsonify({"message": "Missing required fields"}), 400
@@ -69,9 +86,13 @@ def book_room():
             cursor.execute("""
                 UPDATE bookings
                 SET customer=%s, phone_number=%s, channel=%s, checkin_date=%s, checkout_date=%s, 
-                    nights=%s, total_price=%s, status='booked', payment_method=%s, booking_id=%s
+                    nights=%s, total_price=%s, status='booked', payment_method=%s, booking_id=%s,
+                    room_type=%s, payment_status=%s, deposit_status=%s, payment_date=%s,
+                    received_by=%s, discount=%s, booking_status=%s, staff_name=%s, payment_proof=%s
                 WHERE room=%s
-            """, (customer, phone, channel, checkin, checkout, nights, total_price, payment, str(uuid.uuid4()), room))
+            """, (customer, phone, channel, checkin, checkout, nights, total_price, payment, str(uuid.uuid4()),
+                  room_type, payment_status, deposit_status, payment_date, received_by, discount, 
+                  booking_status, staff_name, proof_filename, room))
             conn.commit()
 
         return jsonify({"message": "Booking successful", "room": room})

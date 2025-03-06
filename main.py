@@ -57,6 +57,18 @@ def book_room():
         data = request.form.to_dict()
         data["booking_id"] = str(uuid.uuid4())
 
+        # Assigning default values to missing form fields
+        data.setdefault("channel", "Direct")
+        data.setdefault("room_type", "Standard")
+        data.setdefault("payment_status", "Pending")
+        data.setdefault("payment_method", "Cash")
+        data.setdefault("deposit_status", "Not Paid")
+        data.setdefault("payment_date", None)
+        data.setdefault("received_by", "System")
+        data.setdefault("discount", "0")
+        data.setdefault("booking_status", "Confirmed")
+        data.setdefault("staff_name", "Admin")
+
         payment_proof = request.files.get("payment_proof")
         if payment_proof:
             proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
@@ -64,6 +76,12 @@ def book_room():
             data["payment_proof"] = proof_filename
         else:
             data["payment_proof"] = None
+
+        # Calculate number of nights
+        checkin_date = datetime.strptime(data["checkin"], "%Y-%m-%d")
+        checkout_date = datetime.strptime(data["checkout"], "%Y-%m-%d")
+        data["nights"] = (checkout_date - checkin_date).days
+        data["total_price"] = data["nights"] * 100  # Assuming $100 per night
 
         conn = get_db_connection()
         if conn is None:
@@ -75,7 +93,7 @@ def book_room():
                 phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
                 payment_proof, received_by, discount, booking_status, staff_name) 
                 VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
-                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
+                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment_method)s, 
                 %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
                 %(booking_status)s, %(staff_name)s)
             """, data)

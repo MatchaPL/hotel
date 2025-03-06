@@ -10,8 +10,10 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; }
         #calendar { max-width: 80%; margin: 20px auto; }
-        .modal { display: none; position: fixed; background: rgba(0, 0, 0, 0.6); padding: 20px; }
-        .modal-content { background: white; padding: 20px; border-radius: 5px; width: 50%; margin: auto; }
+        .modal { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); }
+        .modal-content { background: white; padding: 20px; border-radius: 5px; width: 40%; margin: 10% auto; text-align: left; }
+        .modal input, .modal select { width: 100%; margin-bottom: 10px; padding: 5px; }
+        .modal button { padding: 8px 15px; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -25,10 +27,47 @@
 <div id="bookingModal" class="modal">
     <div class="modal-content">
         <h3>Book a Room</h3>
-        <input type="text" id="customer" placeholder="Customer Name">
-        <input type="text" id="room" placeholder="Room Number">
+        <label>Customer Name</label>
+        <input type="text" id="customer">
+        <label>Room Number</label>
+        <input type="text" id="room">
+        <label>Room Type</label>
+        <input type="text" id="room_type">
+        <label>Phone Number</label>
+        <input type="text" id="phone">
+        <label>Booking Channel</label>
+        <input type="text" id="channel">
+        <label>Check-in Date</label>
         <input type="date" id="checkin">
+        <label>Check-out Date</label>
         <input type="date" id="checkout">
+        <label>Nights</label>
+        <input type="number" id="nights">
+        <label>Total Price</label>
+        <input type="number" id="total_price">
+        <label>Payment Status</label>
+        <select id="payment_status">
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+        </select>
+        <label>Payment Method</label>
+        <select id="payment">
+            <option value="Credit Card">Credit Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Cash">Cash</option>
+        </select>
+        <label>Deposit Status</label>
+        <input type="text" id="deposit_status">
+        <label>Payment Date</label>
+        <input type="date" id="payment_date">
+        <label>Received By</label>
+        <input type="text" id="received_by">
+        <label>Discount</label>
+        <input type="number" id="discount">
+        <label>Booking Status</label>
+        <input type="text" id="booking_status">
+        <label>Staff Name</label>
+        <input type="text" id="staff_name">
         <button onclick="submitBooking()">Confirm Booking</button>
         <button onclick="closeBookingForm()">Cancel</button>
     </div>
@@ -68,14 +107,32 @@
         let formData = {
             customer: document.getElementById('customer').value,
             room: document.getElementById('room').value,
+            room_type: document.getElementById('room_type').value,
+            phone: document.getElementById('phone').value,
+            channel: document.getElementById('channel').value,
             checkin: document.getElementById('checkin').value,
-            checkout: document.getElementById('checkout').value
+            checkout: document.getElementById('checkout').value,
+            nights: document.getElementById('nights').value,
+            total_price: document.getElementById('total_price').value,
+            payment_status: document.getElementById('payment_status').value,
+            payment: document.getElementById('payment').value,
+            deposit_status: document.getElementById('deposit_status').value,
+            payment_date: document.getElementById('payment_date').value,
+            received_by: document.getElementById('received_by').value,
+            discount: document.getElementById('discount').value,
+            booking_status: document.getElementById('booking_status').value,
+            staff_name: document.getElementById('staff_name').value
         };
 
-        $.post("/book", formData, function(response) {
-            alert(response.message);
-            location.reload();
-        });
+        fetch("/book", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        }).then(response => response.json())
+          .then(data => {
+              alert(data.message);
+              location.reload();
+          }).catch(error => console.error("Error:", error));
     }
 </script>
 

@@ -50,34 +50,16 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             let calendarEl = document.getElementById("calendar");
-
             let calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
-                selectable: true,
-                editable: true,
-                events: "/get_bookings",
-                dateClick: function (info) {
-                    openBookingForm(info.dateStr);
-                },
-                eventClick: function (info) {
-                    let confirmCancel = confirm("Cancel this booking?");
-                    if (confirmCancel) {
-                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
-                            .then(response => response.json())
-                            .then(data => {
-                                alert(data.message);
-                                calendar.refetchEvents();
-                            });
-                    }
-                }
+                events: "/get_bookings"
             });
 
             calendar.render();
         });
 
-        function openBookingForm(date = "") {
+        function openBookingForm() {
             document.querySelector("#bookingModal").style.display = "block";
-            document.querySelector("[name=checkin]").value = date;
         }
 
         function closeBookingForm() {

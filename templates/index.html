@@ -21,6 +21,17 @@
         .fc-daygrid-day {
             cursor: pointer;
         }
+        #bookingModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -30,7 +41,7 @@
     <div id="calendar"></div>
 
     <!-- Booking Form Modal -->
-    <div id="bookingModal" style="display: none;">
+    <div id="bookingModal">
         <h2>Book a Room</h2>
         <form id="bookingForm">
             <input type="text" name="customer" placeholder="Customer Name" required><br>
@@ -50,34 +61,39 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             let calendarEl = document.getElementById("calendar");
+
             let calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
-                events: "/get_bookings"
+                selectable: true,
+                editable: true,
+                events: "/get_bookings",
+                dateClick: function (info) {
+                    openBookingForm(info.dateStr);
+                },
+                eventClick: function (info) {
+                    let confirmCancel = confirm("Cancel this booking?");
+                    if (confirmCancel) {
+                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message);
+                                calendar.refetchEvents();
+                            });
+                    }
+                }
             });
 
             calendar.render();
         });
 
-        function openBookingForm() {
+        function openBookingForm(date = "") {
             document.querySelector("#bookingModal").style.display = "block";
+            document.querySelector("[name=checkin]").value = date;
         }
 
         function closeBookingForm() {
             document.querySelector("#bookingModal").style.display = "none";
         }
-
-        document.querySelector("#bookingForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-            let formData = new FormData(this);
-
-            fetch("/book", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    closeBookingForm();
-                    location.reload();
-                });
-        });
     </script>
 
 </body>

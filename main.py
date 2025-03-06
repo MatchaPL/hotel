@@ -57,17 +57,12 @@ def book_room():
         data = request.form.to_dict()
         data["booking_id"] = str(uuid.uuid4())
 
-        # Assigning default values to missing form fields
-        data.setdefault("channel", "Direct")
-        data.setdefault("room_type", "Standard")
-        data.setdefault("payment_status", "Pending")
-        data.setdefault("payment_method", "Cash")
-        data.setdefault("deposit_status", "Not Paid")
-        data.setdefault("payment_date", None)
-        data.setdefault("received_by", "System")
-        data.setdefault("discount", "0")
-        data.setdefault("booking_status", "Confirmed")
-        data.setdefault("staff_name", "Admin")
+        # Convert check-in and check-out to datetime
+        data["checkin_date"] = datetime.strptime(data["checkin"], "%Y-%m-%d")
+        data["checkout_date"] = datetime.strptime(data["checkout"], "%Y-%m-%d")
+
+        # Calculate nights
+        data["nights"] = (data["checkout_date"] - data["checkin_date"]).days
 
         payment_proof = request.files.get("payment_proof")
         if payment_proof:
@@ -76,12 +71,6 @@ def book_room():
             data["payment_proof"] = proof_filename
         else:
             data["payment_proof"] = None
-
-        # Calculate number of nights
-        checkin_date = datetime.strptime(data["checkin"], "%Y-%m-%d")
-        checkout_date = datetime.strptime(data["checkout"], "%Y-%m-%d")
-        data["nights"] = (checkout_date - checkin_date).days
-        data["total_price"] = data["nights"] * 100  # Assuming $100 per night
 
         conn = get_db_connection()
         if conn is None:
@@ -92,8 +81,8 @@ def book_room():
                 INSERT INTO bookings (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
                 phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
                 payment_proof, received_by, discount, booking_status, staff_name) 
-                VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
-                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment_method)s, 
+                VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin_date)s, %(checkout_date)s, %(nights)s, %(total_price)s, 
+                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
                 %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
                 %(booking_status)s, %(staff_name)s)
             """, data)

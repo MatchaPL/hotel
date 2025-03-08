@@ -2,49 +2,82 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Booking System</title>
+    <title>Hotel Booking Calendar</title>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
-
-    <style>
-        body { font-family: Arial, sans-serif; }
-        #calendar { max-width: 900px; margin: 40px auto; }
-        #roomStatus { text-align: center; margin-top: 20px; }
-    </style>
 </head>
 <body>
 
-    <h1 style="text-align: center;">Hotel Booking System</h1>
+    <h1 style="text-align: center;">Hotel Booking Calendar</h1>
+    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <h2 style="text-align: center;">Room Status</h2>
-    <div id="roomStatus"></div>
+    <!-- Booking Form Modal -->
+    <div id="bookingModal" style="display: none;">
+        <h2>Book a Room</h2>
+        <form id="bookingForm">
+            <input type="text" name="customer" placeholder="Customer Name" required><br>
+            <input type="text" name="room" placeholder="Room Number" required><br>
+            <input type="text" name="phone" placeholder="Phone Number" required><br>
+            <label>Check-in Date:</label>
+            <input type="date" name="checkin" required><br>
+            <label>Check-out Date:</label>
+            <input type="date" name="checkout" required><br>
+            <button type="submit">Confirm Booking</button>
+            <button type="button" onclick="closeBookingForm()">Cancel</button>
+        </form>
+    </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             let calendarEl = document.getElementById("calendar");
+
             let calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
                 selectable: true,
                 editable: true,
                 events: "/get_bookings",
                 dateClick: function (info) {
-                    fetch(`/get_room_status?date=${info.dateStr}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const roomStatusDiv = document.getElementById("roomStatus");
-                            const bookedRooms = data[info.dateStr] || [];
-                            roomStatusDiv.innerHTML = bookedRooms.length === 13
-                                ? "All rooms are fully booked today."
-                                : `Rooms available: ${13 - bookedRooms.length}`;
-                        });
+                    openBookingForm(info.dateStr);
+                },
+                eventClick: function (info) {
+                    let confirmCancel = confirm("Cancel this booking?");
+                    if (confirmCancel) {
+                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message);
+                                calendar.refetchEvents();
+                            });
+                    }
                 }
             });
 
             calendar.render();
+        });
+
+        function openBookingForm(date = "") {
+            document.querySelector("#bookingModal").style.display = "block";
+            document.querySelector("[name=checkin]").value = date;
+        }
+
+        function closeBookingForm() {
+            document.querySelector("#bookingModal").style.display = "none";
+        }
+
+        document.querySelector("#bookingForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            let formData = new FormData(this);
+
+            fetch("/book", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    closeBookingForm();
+                    location.reload();
+                });
         });
     </script>
 

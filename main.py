@@ -33,7 +33,12 @@ def get_bookings():
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT b.*, r.room_number FROM bookings b JOIN rooms r ON b.room_id = r.room_id WHERE b.status='Booked'")
+        cursor.execute("""
+            SELECT b.booking_id, r.room_number, b.customer_name, b.checkin_date, b.checkout_date 
+            FROM bookings b 
+            JOIN rooms r ON b.room_id = r.room_id 
+            WHERE b.status='Booked'
+        """)
         bookings = cursor.fetchall()
 
     events = []
@@ -53,8 +58,17 @@ def get_bookings():
 def book_room():
     try:
         data = request.form.to_dict()
-        data["booking_id"] = str(uuid.uuid4())
 
+        # Generate unique booking_id
+        data["booking_id"] = str(uuid.uuid4())
+        data["status"] = 'Booked'
+
+        # Convert room_id and numeric data
+        data["room_id"] = int(data.get("room", 0))
+        data["nights"] = int(data.get("nights", 1))
+        data["total_price"] = float(data.get("total_price", 0.0))
+
+        # Handle payment proof
         payment_proof = request.files.get("payment_proof")
         if payment_proof:
             proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
@@ -63,20 +77,23 @@ def book_room():
         else:
             data["payment_proof"] = None
 
+        # Database Connection
         conn = get_db_connection()
         if conn is None:
             return jsonify({"message": "Database connection failed!"}), 500
 
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO bookings (booking_id, room_id, customer_name, phone_number, checkin_date, checkout_date, 
-                nights, total_price, payment_status, payment_proof, status) 
-                VALUES (%(booking_id)s, %(room)s, %(customer)s, %(phone)s, %(checkin)s, %(checkout)s, 
-                %(nights)s, %(total_price)s, %(payment_status)s, %(payment_proof)s, 'Booked')
+                INSERT INTO bookings (booking_id, room_id, customer_name, phone_number, 
+                checkin_date, checkout_date, nights, total_price, payment_status, 
+                payment_proof, status) 
+                VALUES (%(booking_id)s, %(room_id)s, %(customer)s, %(phone)s, %(checkin)s, 
+                %(checkout)s, %(nights)s, %(total_price)s, %(payment_status)s, 
+                %(payment_proof)s, 'Booked')
             """, data)
             conn.commit()
 
-        return jsonify({"message": "Booking successful", "room": data["room"]})
+        return jsonify({"message": "Booking successful", "room": data["room_id"]})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

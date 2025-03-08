@@ -37,35 +37,35 @@ def get_bookings():
         cursor.execute("SELECT * FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
-    events = [
-        {
+    events = []
+    for booking in bookings:
+        events.append({
             "id": booking["id"],
             "title": f"{booking['customer']} - {booking['room_type']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
             "color": "#ff6347",
             "extendedProps": booking
-        }
-        for booking in bookings
-    ]
+        })
     
     return jsonify(events)
 
 @app.route("/get_room_status")
 def get_room_status():
-    """Check if all 13 rooms are full"""
+    """Check room status (Available/Booked)"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT room FROM bookings WHERE status='booked' AND CURDATE() BETWEEN checkin_date AND checkout_date")
+        cursor.execute("SELECT room, checkin_date, checkout_date FROM bookings WHERE status='booked'")
         bookings = cursor.fetchall()
 
-    booked_rooms = {str(booking["room"]) for booking in bookings}  # ห้องที่ถูกจอง
-    all_rooms = {str(i) for i in range(1, 14)}  # ห้อง 1-13
-
-    room_status = [{"room": room, "status": "Booked" if room in booked_rooms else "Available"} for room in all_rooms]
+    room_status = {}
+    for booking in bookings:
+        for date in range((booking["checkout_date"] - booking["checkin_date"]).days + 1):
+            status_date = (booking["checkin_date"] + timedelta(days=date)).strftime("%Y-%m-%d")
+            room_status.setdefault(status_date, []).append(booking["room"])
 
     return jsonify(room_status)
 
@@ -89,20 +89,15 @@ def book_room():
             return jsonify({"message": "Database connection failed!"}), 500
 
         with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO bookings (
-                    room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
-                    phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
-                    payment_proof, received_by, discount, booking_status, staff_name
-                ) VALUES (
-                    %(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
-                    'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
-                    %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
-                    %(booking_status)s, %(staff_name)s
-                )
-                """, data
-            )
+            cursor.execute("""
+                INSERT INTO bookings (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
+                phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
+                payment_proof, received_by, discount, booking_status, staff_name) 
+                VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
+                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
+                %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
+                %(booking_status)s, %(staff_name)s)
+            """, data)
             conn.commit()
 
         return jsonify({"message": "Booking successful", "room": data["room"]})

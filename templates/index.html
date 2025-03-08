@@ -3,71 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Booking Calendar</title>
+    <title>Hotel Booking System</title>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales-all.min.js"></script>
-    
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #calendar {
-            max-width: 900px;
-            margin: 40px auto;
-        }
-        .fc-daygrid-day {
-            cursor: pointer;
-        }
+        body { font-family: Arial, sans-serif; }
+        #calendar { max-width: 900px; margin: 40px auto; }
+        #roomStatus { text-align: center; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <h1 style="text-align: center;">Hotel Booking Calendar</h1>
+    <h1 style="text-align: center;">Hotel Booking System</h1>
     <div id="calendar"></div>
 
     <h2 style="text-align: center;">Room Status</h2>
-    <input type="text" id="searchRoom" placeholder="Search Room Number..." onkeyup="searchRoom()" style="margin: 10px auto; display: block; width: 200px;">
-    <table border="1" id="roomTable" style="width: 80%; margin: 20px auto; text-align: center;">
-        <thead>
-            <tr>
-                <th>Room Number</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody id="roomStatusBody"></tbody>
-    </table>
-    <h3 id="fullStatus" style="text-align: center; color: red; display: none;">All rooms are fully booked today!</h3>
+    <div id="roomStatus"></div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            fetch("/get_room_status")
-                .then(response => response.json())
-                .then(data => {
-                    let tbody = document.getElementById("roomStatusBody");
-                    tbody.innerHTML = "";
-                    let bookedCount = 0;
-                    data.forEach(room => {
-                        let row = `<tr>
-                            <td>${room.room}</td>
-                            <td style="color: ${room.status === 'Booked' ? 'red' : 'green'};">${room.status}</td>
-                        </tr>`;
-                        tbody.innerHTML += row;
-                        if (room.status === "Booked") bookedCount++;
-                    });
-                    document.getElementById("fullStatus").style.display = (bookedCount === 13) ? "block" : "none";
-                });
-        });
-
-        function searchRoom() {
-            let input = document.getElementById("searchRoom").value.toUpperCase();
-            let rows = document.querySelectorAll("#roomTable tbody tr");
-            rows.forEach(row => {
-                row.style.display = row.textContent.toUpperCase().includes(input) ? "" : "none";
+            let calendarEl = document.getElementById("calendar");
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: "dayGridMonth",
+                selectable: true,
+                editable: true,
+                events: "/get_bookings",
+                dateClick: function (info) {
+                    fetch(`/get_room_status?date=${info.dateStr}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const roomStatusDiv = document.getElementById("roomStatus");
+                            const bookedRooms = data[info.dateStr] || [];
+                            roomStatusDiv.innerHTML = bookedRooms.length === 13
+                                ? "All rooms are fully booked today."
+                                : `Rooms available: ${13 - bookedRooms.length}`;
+                        });
+                }
             });
-        }
+
+            calendar.render();
+        });
     </script>
 
 </body>

@@ -28,50 +28,29 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """Fetch all bookings for FullCalendar"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
 
     with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM bookings WHERE status='booked'")
+        cursor.execute("SELECT b.*, r.room_number FROM bookings b JOIN rooms r ON b.room_id = r.room_id WHERE b.status='Booked'")
         bookings = cursor.fetchall()
 
     events = []
     for booking in bookings:
         events.append({
-            "id": booking["id"],
-            "title": f"{booking['customer']} - {booking['room_type']}",
+            "id": booking["booking_id"],
+            "title": f"{booking['customer_name']} - Room {booking['room_number']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#ff6347",
+            "color": "#28a745",
             "extendedProps": booking
         })
     
     return jsonify(events)
 
-@app.route("/get_room_status")
-def get_room_status():
-    """Check room status (Available/Booked)"""
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify([])
-
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT room, checkin_date, checkout_date FROM bookings WHERE status='booked'")
-        bookings = cursor.fetchall()
-
-    room_status = {}
-    for booking in bookings:
-        for date in range((booking["checkout_date"] - booking["checkin_date"]).days + 1):
-            status_date = (booking["checkin_date"] + timedelta(days=date)).strftime("%Y-%m-%d")
-            room_status.setdefault(status_date, []).append(booking["room"])
-
-    return jsonify(room_status)
-
 @app.route("/book", methods=["POST"])
 def book_room():
-    """Book a room"""
     try:
         data = request.form.to_dict()
         data["booking_id"] = str(uuid.uuid4())
@@ -90,13 +69,10 @@ def book_room():
 
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO bookings (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
-                phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
-                payment_proof, received_by, discount, booking_status, staff_name) 
-                VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
-                'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
-                %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
-                %(booking_status)s, %(staff_name)s)
+                INSERT INTO bookings (booking_id, room_id, customer_name, phone_number, checkin_date, checkout_date, 
+                nights, total_price, payment_status, payment_proof, status) 
+                VALUES (%(booking_id)s, %(room)s, %(customer)s, %(phone)s, %(checkin)s, %(checkout)s, 
+                %(nights)s, %(total_price)s, %(payment_status)s, %(payment_proof)s, 'Booked')
             """, data)
             conn.commit()
 
@@ -105,15 +81,14 @@ def book_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/cancel/<int:booking_id>", methods=["POST"])
+@app.route("/cancel/<booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
-    """Cancel a booking"""
     conn = get_db_connection()
     if conn is None:
         return jsonify({"message": "Database connection failed!"}), 500
 
     with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        cursor.execute("UPDATE bookings SET status='Cancelled' WHERE booking_id = %s", (booking_id,))
         conn.commit()
 
     return jsonify({"message": "Booking cancelled"})

@@ -21,78 +21,52 @@
         .fc-daygrid-day {
             cursor: pointer;
         }
-        #bookingModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border: 1px solid #ccc;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
 
     <h1 style="text-align: center;">Hotel Booking Calendar</h1>
-    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <!-- Booking Form Modal -->
-    <div id="bookingModal">
-        <h2>Book a Room</h2>
-        <form id="bookingForm">
-            <input type="text" name="customer" placeholder="Customer Name" required><br>
-            <input type="text" name="room" placeholder="Room Number" required><br>
-            <input type="text" name="room_type" placeholder="Room Type"><br>
-            <input type="text" name="phone" placeholder="Phone Number" required><br>
-            <input type="text" name="channel" placeholder="Booking Channel"><br>
-            <label>Check-in Date:</label>
-            <input type="date" name="checkin" required><br>
-            <label>Check-out Date:</label>
-            <input type="date" name="checkout" required><br>
-            <button type="submit">Confirm Booking</button>
-            <button type="button" onclick="closeBookingForm()">Cancel</button>
-        </form>
-    </div>
+    <h2 style="text-align: center;">Room Status</h2>
+    <input type="text" id="searchRoom" placeholder="Search Room Number..." onkeyup="searchRoom()" style="margin: 10px auto; display: block; width: 200px;">
+    <table border="1" id="roomTable" style="width: 80%; margin: 20px auto; text-align: center;">
+        <thead>
+            <tr>
+                <th>Room Number</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="roomStatusBody"></tbody>
+    </table>
+    <h3 id="fullStatus" style="text-align: center; color: red; display: none;">All rooms are fully booked today!</h3>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            let calendarEl = document.getElementById("calendar");
-
-            let calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: "dayGridMonth",
-                selectable: true,
-                editable: true,
-                events: "/get_bookings",
-                dateClick: function (info) {
-                    openBookingForm(info.dateStr);
-                },
-                eventClick: function (info) {
-                    let confirmCancel = confirm("Cancel this booking?");
-                    if (confirmCancel) {
-                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
-                            .then(response => response.json())
-                            .then(data => {
-                                alert(data.message);
-                                calendar.refetchEvents();
-                            });
-                    }
-                }
-            });
-
-            calendar.render();
+            fetch("/get_room_status")
+                .then(response => response.json())
+                .then(data => {
+                    let tbody = document.getElementById("roomStatusBody");
+                    tbody.innerHTML = "";
+                    let bookedCount = 0;
+                    data.forEach(room => {
+                        let row = `<tr>
+                            <td>${room.room}</td>
+                            <td style="color: ${room.status === 'Booked' ? 'red' : 'green'};">${room.status}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                        if (room.status === "Booked") bookedCount++;
+                    });
+                    document.getElementById("fullStatus").style.display = (bookedCount === 13) ? "block" : "none";
+                });
         });
 
-        function openBookingForm(date = "") {
-            document.querySelector("#bookingModal").style.display = "block";
-            document.querySelector("[name=checkin]").value = date;
-        }
-
-        function closeBookingForm() {
-            document.querySelector("#bookingModal").style.display = "none";
+        function searchRoom() {
+            let input = document.getElementById("searchRoom").value.toUpperCase();
+            let rows = document.querySelectorAll("#roomTable tbody tr");
+            rows.forEach(row => {
+                row.style.display = row.textContent.toUpperCase().includes(input) ? "" : "none";
+            });
         }
     </script>
 

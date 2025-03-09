@@ -2,87 +2,127 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hotel Booking Calendar</title>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Management Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #343a40;
+            color: #fff;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            text-align: center;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        .status-checked-in {
+            background-color: #ffeb3b;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .status-checked-out {
+            background-color: #4CAF50;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .btn-view {
+            background-color: #2196F3;
+            color: #fff;
+            border: none;
+            padding: 5px 15px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
-    <h1 style="text-align: center;">Hotel Booking Calendar</h1>
-    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
-    <div id="calendar"></div>
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="#">Check In</a></li>
+            <li><a href="#">Check Out</a></li>
+        </ul>
+    </div>
 
-    <!-- Booking Form Modal -->
-    <div id="bookingModal" style="display: none;">
-        <h2>Book a Room</h2>
-        <form id="bookingForm">
-            <input type="text" name="customer" placeholder="Customer Name" required><br>
-            <input type="text" name="room" placeholder="Room Number" required><br>
-            <input type="text" name="phone" placeholder="Phone Number" required><br>
-            <label>Check-in Date:</label>
-            <input type="date" name="checkin" required><br>
-            <label>Check-out Date:</label>
-            <input type="date" name="checkout" required><br>
-            <input type="text" name="nights" placeholder="Nights" required><br>
-            <input type="text" name="total_price" placeholder="Total Price" required><br>
-            <input type="text" name="payment_status" placeholder="Payment Status" required><br>
-            <input type="file" name="payment_proof"><br>
-            <button type="submit">Confirm Booking</button>
-            <button type="button" onclick="closeBookingForm()">Cancel</button>
-        </form>
+    <div class="content">
+        <h1 style="text-align: center;">Booking Status</h1>
+
+        <table id="bookingTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Category</th>
+                    <th>Room</th>
+                    <th>Customer</th>
+                    <th>Reference</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Booking data will be loaded here dynamically -->
+            </tbody>
+        </table>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            let calendarEl = document.getElementById("calendar");
-
-            let calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: "dayGridMonth",
-                selectable: true,
-                editable: true,
-                events: "/get_bookings",
-                dateClick: function (info) {
-                    openBookingForm(info.dateStr);
-                },
-                eventClick: function (info) {
-                    let confirmCancel = confirm("Cancel this booking?");
-                    if (confirmCancel) {
-                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
-                            .then(response => response.json())
-                            .then(data => {
-                                alert(data.message);
-                                calendar.refetchEvents();
-                            });
-                    }
-                }
-            });
-
-            calendar.render();
-        });
-
-        function openBookingForm(date = "") {
-            document.querySelector("#bookingModal").style.display = "block";
-            document.querySelector("[name=checkin]").value = date;
-        }
-
-        function closeBookingForm() {
-            document.querySelector("#bookingModal").style.display = "none";
-        }
-
-        document.querySelector("#bookingForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-            let formData = new FormData(this);
-
-            fetch("/book", { method: "POST", body: formData })
+            fetch('/get_bookings')
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.message);
-                    closeBookingForm();
-                    location.reload();
+                    const tableBody = document.querySelector("#bookingTable tbody");
+                    tableBody.innerHTML = "";
+
+                    data.forEach((booking, index) => {
+                        const row = document.createElement("tr");
+
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${booking.room_type}</td>
+                            <td>${booking.room_id}</td>
+                            <td>${booking.customer_name}</td>
+                            <td>${booking.booking_id}</td>
+                            <td class="${booking.status === 'Checked-In' ? 'status-checked-in' : 'status-checked-out'}">
+                                ${booking.status}
+                            </td>
+                            <td>
+                                <button class="btn-view" onclick="viewDetails('${booking.booking_id}')">View</button>
+                            </td>
+                        `;
+
+                        tableBody.appendChild(row);
+                    });
                 });
         });
+
+        function viewDetails(bookingId) {
+            alert(`Viewing details for booking ID: ${bookingId}`);
+        }
     </script>
 
 </body>

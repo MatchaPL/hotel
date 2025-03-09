@@ -28,68 +28,50 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
+    """Fetch booking data for the dashboard"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
 
     with conn.cursor() as cursor:
         cursor.execute("""
-            SELECT b.booking_id, r.room_number, b.customer_name, b.checkin_date, b.checkout_date 
-            FROM bookings b 
-            JOIN rooms r ON b.room_id = r.room_id 
-            WHERE b.status='Booked'
+            SELECT booking_id, room_id, customer_name, phone_number,
+                   checkin_date, checkout_date, nights, total_price,
+                   payment_status, status, room_type
+            FROM bookings
         """)
         bookings = cursor.fetchall()
 
-    events = []
+    # ตรวจสอบสถานะการจอง
     for booking in bookings:
-        events.append({
-            "id": booking["booking_id"],
-            "title": f"{booking['customer_name']} - Room {booking['room_number']}",
-            "start": booking["checkin_date"].strftime("%Y-%m-%d"),
-            "end": booking["checkout_date"].strftime("%Y-%m-%d"),
-            "color": "#28a745",
-            "extendedProps": booking
-        })
-    
-    return jsonify(events)
+        today = datetime.today().date()
+        checkin_date = booking['checkin_date']
+        checkout_date = booking['checkout_date']
+
+        if today >= checkin_date and today <= checkout_date:
+            booking['status'] = 'Checked-In'
+        else:
+            booking['status'] = 'Checked-Out'
+
+    return jsonify(bookings)
 
 @app.route("/book", methods=["POST"])
 def book_room():
+    """Book a room"""
     try:
         data = request.form.to_dict()
-
-        # Generate unique booking_id
         data["booking_id"] = str(uuid.uuid4())
-        data["status"] = 'Booked'
 
-        # Convert room_id and numeric data
-        data["room_id"] = int(data.get("room", 0))
-        data["nights"] = int(data.get("nights", 1))
-        data["total_price"] = float(data.get("total_price", 0.0))
-
-        # Handle payment proof
-        payment_proof = request.files.get("payment_proof")
-        if payment_proof:
-            proof_filename = f"{uuid.uuid4()}_{payment_proof.filename}"
-            payment_proof.save(os.path.join(app.config["UPLOAD_FOLDER"], proof_filename))
-            data["payment_proof"] = proof_filename
-        else:
-            data["payment_proof"] = None
-
-        # Database Connection
         conn = get_db_connection()
         if conn is None:
             return jsonify({"message": "Database connection failed!"}), 500
 
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO bookings (booking_id, room_id, customer_name, phone_number, 
-                checkin_date, checkout_date, nights, total_price, payment_status, 
-                payment_proof, status) 
-                VALUES (%(booking_id)s, %(room_id)s, %(customer)s, %(phone)s, %(checkin)s, 
-                %(checkout)s, %(nights)s, %(total_price)s, %(payment_status)s, 
-                %(payment_proof)s, 'Booked')
+                INSERT INTO bookings (room_id, customer_name, phone_number, checkin_date, 
+                checkout_date, nights, total_price, status, booking_id, room_type)
+                VALUES (%(room_id)s, %(customer_name)s, %(phone_number)s, %(checkin_date)s,
+                %(checkout_date)s, %(nights)s, %(total_price)s, 'Checked-In', %(booking_id)s, %(room_type)s)
             """, data)
             conn.commit()
 
@@ -98,14 +80,15 @@ def book_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/cancel/<booking_id>", methods=["POST"])
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
+    """Cancel a booking"""
     conn = get_db_connection()
     if conn is None:
         return jsonify({"message": "Database connection failed!"}), 500
 
     with conn.cursor() as cursor:
-        cursor.execute("UPDATE bookings SET status='Cancelled' WHERE booking_id = %s", (booking_id,))
+        cursor.execute("DELETE FROM bookings WHERE booking_id = %s", (booking_id,))
         conn.commit()
 
     return jsonify({"message": "Booking cancelled"})

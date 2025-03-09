@@ -10,7 +10,7 @@ app.config["UPLOAD_FOLDER"] = "static/uploads"
 # Database Connection
 def get_db_connection():
     try:
-        return pymysql.connect(
+        conn = pymysql.connect(
             host="turntable.proxy.rlwy.net",
             user="root",
             password="jijDgGGBmVEhxmiDyepJBGLxJGWXJTFF",
@@ -18,8 +18,10 @@ def get_db_connection():
             port=24565,
             cursorclass=pymysql.cursors.DictCursor
         )
+        print("✅ Database connected successfully!")
+        return conn
     except pymysql.MySQLError as e:
-        print("Database Connection Error:", e)
+        print("❌ Database Connection Error:", e)
         return None
 
 # คำนวณราคาห้องพัก
@@ -37,7 +39,7 @@ def home():
 
 @app.route("/get_bookings")
 def get_bookings():
-    """Fetch booking data for the dashboard"""
+    """Fetch booking data for the calendar"""
     conn = get_db_connection()
     if conn is None:
         return jsonify([])
@@ -51,17 +53,17 @@ def get_bookings():
         """)
         bookings = cursor.fetchall()
 
+    events = []
     for booking in bookings:
-        today = datetime.today().date()
-        checkin_date = booking['checkin_date']
-        checkout_date = booking['checkout_date']
+        events.append({
+            "id": booking["booking_id"],
+            "title": f"{booking['customer_name']} ({booking['room_id']})",
+            "start": booking["checkin_date"].strftime("%Y-%m-%d"),
+            "end": booking["checkout_date"].strftime("%Y-%m-%d"),
+            "color": "#4CAF50" if booking['status'] == 'booked' else "#F44336"
+        })
 
-        if today >= checkin_date and today <= checkout_date:
-            booking['status'] = 'Checked-In'
-        else:
-            booking['status'] = 'Checked-Out'
-
-    return jsonify(bookings)
+    return jsonify(events)
 
 @app.route("/book", methods=["POST"])
 def book_room():
@@ -82,7 +84,7 @@ def book_room():
                 INSERT INTO bookings (room_id, customer_name, phone_number, checkin_date, 
                 checkout_date, nights, total_price, status, booking_id, room_type)
                 VALUES (%(room_id)s, %(customer_name)s, %(phone_number)s, %(checkin_date)s,
-                %(checkout_date)s, %(nights)s, %(total_price)s, 'Checked-In', %(booking_id)s, %(room_type)s)
+                %(checkout_date)s, %(nights)s, %(total_price)s, 'booked', %(booking_id)s, %(room_type)s)
             """, data)
             conn.commit()
 

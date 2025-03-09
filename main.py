@@ -22,6 +22,15 @@ def get_db_connection():
         print("Database Connection Error:", e)
         return None
 
+# คำนวณราคาห้องพัก
+def calculate_price(room_type, nights):
+    prices = {
+        'Standard': 600,
+        'Deluxe': 800,
+        'Family': 1200
+    }
+    return prices.get(room_type, 0) * int(nights)
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -42,7 +51,6 @@ def get_bookings():
         """)
         bookings = cursor.fetchall()
 
-    # ตรวจสอบสถานะการจอง
     for booking in bookings:
         today = datetime.today().date()
         checkin_date = booking['checkin_date']
@@ -60,6 +68,9 @@ def book_room():
     """Book a room"""
     try:
         data = request.form.to_dict()
+
+        # คำนวณราคาห้องพักตามประเภทห้อง
+        data["total_price"] = calculate_price(data["room_type"], data["nights"])
         data["booking_id"] = str(uuid.uuid4())
 
         conn = get_db_connection()
@@ -80,7 +91,7 @@ def book_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/cancel/<int:booking_id>", methods=["POST"])
+@app.route("/cancel/<booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
     """Cancel a booking"""
     conn = get_db_connection()

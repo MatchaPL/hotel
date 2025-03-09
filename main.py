@@ -91,18 +91,5 @@ def book_room():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/cancel/<booking_id>", methods=["POST"])
-def cancel_booking(booking_id):
-    """Cancel a booking"""
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"message": "Database connection failed!"}), 500
-
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM bookings WHERE booking_id = %s", (booking_id,))
-        conn.commit()
-
-    return jsonify({"message": "Booking cancelled"})
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

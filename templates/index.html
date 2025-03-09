@@ -80,6 +80,12 @@
                 initialView: "dayGridMonth",
                 selectable: true,
                 events: "/get_bookings",
+                eventClick: function(info) {
+                    alert(`Booking Details:
+- Customer: ${info.event.title}
+- Check-in Date: ${info.event.start.toISOString().slice(0, 10)}
+- Check-out Date: ${info.event.end.toISOString().slice(0, 10)}`);
+                }
             });
 
             calendar.render();

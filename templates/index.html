@@ -4,16 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Booking Calendar</title>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales-all.min.js"></script>
-    
     <style>
-        body { font-family: Arial, sans-serif; }
-        #calendar { max-width: 900px; margin: 40px auto; }
-        .fc-daygrid-day { cursor: pointer; }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; }
+        #calendar { max-width: 1200px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
         #bookingDetails { display: none; background: #fff; border: 2px solid #4CAF50; padding: 20px; position: absolute; top: 20%; left: 35%; width: 30%; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 10px; z-index: 1000; }
         #bookingDetails h2 { text-align: center; color: #4CAF50; }
         #bookingDetails button { margin-top: 10px; width: 100%; background-color: #ff4d4d; color: #fff; border: none; padding: 8px 0; cursor: pointer; border-radius: 5px; }
@@ -22,8 +18,7 @@
 </head>
 <body>
 
-    <h1 style="text-align: center;">Hotel Booking Calendar</h1>
-    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
+    <h1 style="text-align: center;">Hotel Booking System</h1>
     <div id="calendar"></div>
 
     <div id="bookingDetails">

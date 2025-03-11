@@ -50,6 +50,21 @@ def get_bookings():
     
     return jsonify(events)
 
+@app.route("/get_booking_details/<date>")
+def get_booking_details(date):
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify([])
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT * FROM bookings 
+            WHERE checkin_date <= %s AND checkout_date >= %s
+        """, (date, date))
+        bookings = cursor.fetchall()
+
+    return jsonify(bookings)
+
 @app.route("/book", methods=["POST"])
 def book_room():
     data = request.form.to_dict()
@@ -73,18 +88,6 @@ def book_room():
         conn.commit()
 
     return jsonify({"message": "Booking successful", "room": data["room"]})
-
-@app.route("/cancel/<int:booking_id>", methods=["POST"])
-def cancel_booking(booking_id):
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"message": "Database connection failed!"}), 500
-
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
-        conn.commit()
-
-    return jsonify({"message": "Booking cancelled successfully!"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

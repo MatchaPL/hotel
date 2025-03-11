@@ -61,8 +61,39 @@ def get_booking_details(date):
 
     return jsonify(bookings)
 
+@app.route("/check_availability", methods=["POST"])
+def check_availability():
+    """ตรวจสอบห้องว่าง"""
+    data = request.form.to_dict()
+    room = data.get("room")
+    checkin = data.get("checkin")
+    checkout = data.get("checkout")
+
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"message": "Database connection failed!"}), 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT * FROM bookings 
+            WHERE room = %s 
+            AND (
+                (checkin_date <= %s AND checkout_date >= %s)
+                OR
+                (checkin_date <= %s AND checkout_date >= %s)
+            )
+        """, (room, checkin, checkin, checkout, checkout))
+
+        existing_booking = cursor.fetchall()
+
+    if existing_booking:
+        return jsonify({"available": False, "message": "ห้องนี้ถูกจองแล้วในช่วงเวลาที่เลือก"}), 400
+
+    return jsonify({"available": True, "message": "ห้องนี้ว่าง สามารถจองได้"}), 200
+
 @app.route("/book", methods=["POST"])
 def book_room():
+    """เพิ่มข้อมูลการจอง"""
     try:
         data = request.form.to_dict()
         data["booking_id"] = str(uuid.uuid4())

@@ -3,73 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Management Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <title>Hotel Booking Calendar</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales-all.min.js"></script>
+    
     <style>
-        body {
-            display: flex;
-            min-height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-        .sidebar {
-            width: 250px;
-            background-color: #343a40;
-            color: #fff;
-            padding: 20px;
-        }
-        .sidebar h2 {
-            text-align: center;
-        }
-        .sidebar ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        .content {
-            flex-grow: 1;
-            padding: 20px;
-        }
-        #calendar {
-            max-width: 900px;
-            margin: 20px auto;
-        }
+        body { font-family: Arial, sans-serif; }
+        #calendar { max-width: 900px; margin: 40px auto; }
+        .fc-daygrid-day { cursor: pointer; }
+        #bookingDetails { margin-top: 20px; display: none; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #4CAF50; color: white; }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <h2>Dashboard</h2>
-        <ul>
-            <li><a href="/">🏠 Home</a></li>
-            <li><a href="#">🛏️ Booked Rooms</a></li>
-            <li><a href="#">✅ Check In</a></li>
-            <li><a href="#">❌ Check Out</a></li>
-            <li><a href="#">📋 Room Categories</a></li>
-            <li><a href="#">👥 Users</a></li>
-            <li><a href="#">⚙️ Site Settings</a></li>
-        </ul>
-    </div>
+    <h1 style="text-align: center;">Hotel Booking Calendar</h1>
+    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
+    <div id="calendar"></div>
 
-    <div class="content">
-        <h1 style="text-align: center;">Booking Calendar</h1>
-        <button onclick="openBookingForm()" style="margin-bottom: 20px;">+ Add Booking</button>
-        <div id="calendar"></div>
-    </div>
-
-    <!-- Booking Form -->
-    <div id="bookingModal" style="display: none;">
-        <h2>Add Booking</h2>
-        <form id="bookingForm">
-            <input type="text" name="room_id" placeholder="Room ID" required><br>
-            <input type="text" name="customer_name" placeholder="Customer Name" required><br>
-            <input type="text" name="phone_number" placeholder="Phone Number" required><br>
-            <input type="date" name="checkin_date" required><br>
-            <input type="date" name="checkout_date" required><br>
-            <input type="number" name="nights" placeholder="Number of Nights" required><br>
-            <button type="submit">Submit</button>
-        </form>
+    <div id="bookingDetails">
+        <h2>Booking Details</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Room</th>
+                    <th>Customer</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                </tr>
+            </thead>
+            <tbody id="bookingTableBody"></tbody>
+        </table>
     </div>
 
     <script>
@@ -79,33 +48,35 @@
             let calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: "dayGridMonth",
                 selectable: true,
+                editable: true,
                 events: "/get_bookings",
-                eventClick: function(info) {
-                    alert(`Booking Details:
-- Customer: ${info.event.title}
-- Check-in Date: ${info.event.start.toISOString().slice(0, 10)}
-- Check-out Date: ${info.event.end.toISOString().slice(0, 10)}`);
+                dateClick: function (info) {
+                    fetch(`/get_booking_details/${info.dateStr}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.length) {
+                                let tbody = document.getElementById("bookingTableBody");
+                                tbody.innerHTML = "";
+                                data.forEach(booking => {
+                                    tbody.innerHTML += `
+                                        <tr>
+                                            <td>${booking.room}</td>
+                                            <td>${booking.customer}</td>
+                                            <td>${booking.checkin_date}</td>
+                                            <td>${booking.checkout_date}</td>
+                                        </tr>
+                                    `;
+                                });
+                                document.getElementById("bookingDetails").style.display = "block";
+                            } else {
+                                alert("No bookings on this date.");
+                                document.getElementById("bookingDetails").style.display = "none";
+                            }
+                        });
                 }
             });
 
             calendar.render();
-        });
-
-        function openBookingForm() {
-            document.getElementById("bookingModal").style.display = "block";
-        }
-
-        document.getElementById("bookingForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-
-            fetch("/book", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    document.getElementById("bookingModal").style.display = "none";
-                    location.reload();
-                });
         });
     </script>
 

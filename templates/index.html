@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Booking Calendar</title>
+    <title>Hotel Booking System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; }
         #calendar { max-width: 1200px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
-        #bookingDetails { display: none; background: #fff; border: 2px solid #4CAF50; padding: 20px; position: absolute; top: 20%; left: 35%; width: 30%; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 10px; z-index: 1000; }
-        #bookingDetails h2 { text-align: center; color: #4CAF50; }
-        #bookingDetails button { margin-top: 10px; width: 100%; background-color: #ff4d4d; color: #fff; border: none; padding: 8px 0; cursor: pointer; border-radius: 5px; }
-        #closePopup { background-color: #4CAF50; color: #fff; }
+        #addBookingBtn { position: fixed; bottom: 30px; right: 30px; background: #4CAF50; color: #fff; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 24px; cursor: pointer; }
+        #bookingForm { display: none; background: #fff; border: 2px solid #4CAF50; padding: 20px; position: absolute; top: 20%; left: 35%; width: 30%; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 10px; z-index: 1000; }
     </style>
 </head>
 <body>
@@ -21,10 +19,19 @@
     <h1 style="text-align: center;">Hotel Booking System</h1>
     <div id="calendar"></div>
 
-    <div id="bookingDetails">
-        <h2>Booking Details</h2>
-        <div id="detailsContent"></div>
-        <button id="closePopup" onclick="closeDetailsPopup()">Close</button>
+    <button id="addBookingBtn" onclick="openBookingPopup()">+</button>
+
+    <div id="bookingForm">
+        <h2>Book a Room</h2>
+        <form id="addBookingForm">
+            <input type="text" name="customer" placeholder="Customer Name" required><br>
+            <input type="text" name="room" placeholder="Room Number" required><br>
+            <input type="text" name="room_type" placeholder="Room Type" required><br>
+            <input type="date" name="checkin" required><br>
+            <input type="date" name="checkout" required><br>
+            <button type="submit">Confirm Booking</button>
+            <button type="button" onclick="closeBookingPopup()">Cancel</button>
+        </form>
     </div>
 
     <script>
@@ -37,49 +44,34 @@
                 editable: true,
                 events: "/get_bookings",
                 dateClick: function (info) {
-                    fetch(`/get_booking_details/${info.dateStr}`)
-                        .then(response => response.json())
-                        .then(data => displayBookingDetails(data, info.dateStr));
-                },
-                eventClick: function (info) {
-                    let confirmCancel = confirm("Cancel this booking?");
-                    if (confirmCancel) {
-                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
-                            .then(response => response.json())
-                            .then(data => {
-                                alert(data.message);
-                                calendar.refetchEvents();
-                            });
-                    }
+                    openBookingPopup(info.dateStr);
                 }
             });
 
             calendar.render();
         });
 
-        function displayBookingDetails(data, date) {
-            let detailsDiv = document.getElementById("bookingDetails");
-            let contentDiv = document.getElementById("detailsContent");
-
-            if (data.length === 0) {
-                contentDiv.innerHTML = `<p>No bookings on ${date}.</p>`;
-            } else {
-                let content = data.map(booking => `
-                    <p><strong>Customer:</strong> ${booking.customer}</p>
-                    <p><strong>Room:</strong> ${booking.room}</p>
-                    <p><strong>Check-in:</strong> ${booking.checkin_date}</p>
-                    <p><strong>Check-out:</strong> ${booking.checkout_date}</p>
-                    <hr>
-                `).join("");
-                contentDiv.innerHTML = content;
-            }
-
-            detailsDiv.style.display = "block";
+        function openBookingPopup(date = "") {
+            document.querySelector("#bookingForm").style.display = "block";
+            document.querySelector("[name=checkin]").value = date;
         }
 
-        function closeDetailsPopup() {
-            document.getElementById("bookingDetails").style.display = "none";
+        function closeBookingPopup() {
+            document.querySelector("#bookingForm").style.display = "none";
         }
+
+        document.querySelector("#addBookingForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            let formData = new FormData(this);
+
+            fetch("/book", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    closeBookingPopup();
+                    location.reload();
+                });
+        });
     </script>
 
 </body>

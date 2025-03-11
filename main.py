@@ -38,11 +38,13 @@ def get_bookings():
 
     events = []
     for booking in bookings:
+        color = "#4CAF50" if booking['payment_status'] == "Paid" else "#FF6347"
         events.append({
             "id": booking["id"],
-            "title": f"{booking['customer']} - {booking['room']}",
+            "title": f"{booking['customer']} - Room {booking['room']}",
             "start": booking["checkin_date"].strftime("%Y-%m-%d"),
             "end": booking["checkout_date"].strftime("%Y-%m-%d"),
+            "color": color,
             "extendedProps": booking
         })
     
@@ -59,7 +61,8 @@ def book_room():
 
     with conn.cursor() as cursor:
         cursor.execute("""
-            INSERT INTO bookings (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
+            INSERT INTO bookings 
+            (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
             phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
             payment_proof, received_by, discount, booking_status, staff_name) 
             VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
@@ -70,6 +73,18 @@ def book_room():
         conn.commit()
 
     return jsonify({"message": "Booking successful", "room": data["room"]})
+
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
+def cancel_booking(booking_id):
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"message": "Database connection failed!"}), 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        conn.commit()
+
+    return jsonify({"message": "Booking cancelled successfully!"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

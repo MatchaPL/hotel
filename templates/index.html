@@ -4,64 +4,97 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Booking Calendar</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales-all.min.js"></script>
+    
     <style>
-        body { font-family: Arial, sans-serif; }
-        #calendar { max-width: 900px; margin: 40px auto; }
-        .fc-daygrid-day { cursor: pointer; }
-        #availabilityStatus {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f0f0f0;
-            display: none;
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #calendar {
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        .fc-daygrid-day {
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
     <h1 style="text-align: center;">Hotel Booking Calendar</h1>
+    <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <div id="availabilityStatus"></div>
-
-    <form id="bookingForm">
-        <input type="text" name="customer" placeholder="Customer Name" required><br>
-        <input type="text" name="room" placeholder="Room Number" required><br>
-        <input type="date" name="checkin" required><br>
-        <input type="date" name="checkout" required><br>
-        <button type="button" onclick="checkAvailability()">Check Availability</button>
-        <button type="submit">Confirm Booking</button>
-    </form>
+    <!-- Booking Form Modal -->
+    <div id="bookingModal" style="display: none;">
+        <h2>Book a Room</h2>
+        <form id="bookingForm">
+            <input type="text" name="customer" placeholder="Customer Name" required><br>
+            <input type="text" name="room" placeholder="Room Number" required><br>
+            <input type="text" name="room_type" placeholder="Room Type"><br>
+            <input type="text" name="phone" placeholder="Phone Number" required><br>
+            <input type="text" name="channel" placeholder="Booking Channel"><br>
+            <label>Check-in Date:</label>
+            <input type="date" name="checkin" required><br>
+            <label>Check-out Date:</label>
+            <input type="date" name="checkout" required><br>
+            <button type="submit">Confirm Booking</button>
+            <button type="button" onclick="closeBookingForm()">Cancel</button>
+        </form>
+    </div>
 
     <script>
-        function checkAvailability() {
-            let formData = new FormData(document.getElementById("bookingForm"));
+        document.addEventListener("DOMContentLoaded", function () {
+            let calendarEl = document.getElementById("calendar");
 
-            fetch("/check_availability", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                let statusDiv = document.getElementById("availabilityStatus");
-                statusDiv.innerHTML = data.message;
-                statusDiv.style.display = "block";
-                statusDiv.style.backgroundColor = data.available ? "#4CAF50" : "#FF6347";
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: "dayGridMonth",
+                selectable: true,
+                editable: true,
+                events: "/get_bookings",
+                dateClick: function (info) {
+                    openBookingForm(info.dateStr);
+                },
+                eventClick: function (info) {
+                    let confirmCancel = confirm("Cancel this booking?");
+                    if (confirmCancel) {
+                        fetch(`/cancel/${info.event.id}`, { method: "POST" })
+                            .then(response => response.json())
+                            .then(data => {
+                                alert(data.message);
+                                calendar.refetchEvents();
+                            });
+                    }
+                }
             });
+
+            calendar.render();
+        });
+
+        function openBookingForm(date = "") {
+            document.querySelector("#bookingModal").style.display = "block";
+            document.querySelector("[name=checkin]").value = date;
         }
 
-        document.getElementById("bookingForm").addEventListener("submit", function(event) {
+        function closeBookingForm() {
+            document.querySelector("#bookingModal").style.display = "none";
+        }
+
+        document.querySelector("#bookingForm").addEventListener("submit", function (event) {
             event.preventDefault();
             let formData = new FormData(this);
 
-            fetch("/book", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                location.reload();
-            });
+            fetch("/book", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    closeBookingForm();
+                    location.reload();
+                });
         });
     </script>
 

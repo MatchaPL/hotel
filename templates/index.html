@@ -13,6 +13,9 @@
         #bookingDetails { flex: 1; background: #fff; margin: 40px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
         .booking-card { background: #f0f0f0; padding: 10px; margin-bottom: 10px; border-left: 5px solid #4CAF50; }
         .pending { border-left: 5px solid #FF6347; }
+        #addBookingForm { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin: 40px; }
+        #addBookingForm input, #addBookingForm button { width: 100%; padding: 8px; margin-top: 10px; }
+        #addBookingBtn { position: fixed; bottom: 30px; right: 30px; background: #4CAF50; color: #fff; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 24px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -24,7 +27,51 @@
         <div id="detailsContent">Click on a date to see bookings.</div>
     </div>
 
+    <button id="addBookingBtn" onclick="openBookingPopup()">+</button>
+
+    <div id="addBookingForm" style="display: none;">
+        <h2>Add Booking</h2>
+        <form id="addBookingData">
+            <input type="text" name="customer" placeholder="Customer Name" required>
+            <input type="text" name="room" placeholder="Room Number" required>
+            <input type="text" name="channel" placeholder="Booking Channel">
+            <input type="date" name="checkin_date" placeholder="Check-in Date" required>
+            <input type="date" name="checkout_date" placeholder="Check-out Date" required>
+            <input type="text" name="nights" placeholder="Nights">
+            <input type="text" name="total_price" placeholder="Total Price">
+            <input type="text" name="status" placeholder="Status">
+            <input type="text" name="phone_number" placeholder="Phone Number">
+            <input type="text" name="room_type" placeholder="Room Type">
+            <input type="text" name="payment_status" placeholder="Payment Status">
+            <input type="text" name="payment_method" placeholder="Payment Method">
+            <input type="text" name="deposit_status" placeholder="Deposit Status">
+            <input type="date" name="payment_date" placeholder="Payment Date">
+            <input type="text" name="payment_proof" placeholder="Payment Proof">
+            <input type="text" name="received_by" placeholder="Received By">
+            <input type="text" name="discount" placeholder="Discount">
+            <input type="text" name="booking_status" placeholder="Booking Status">
+            <input type="text" name="staff_name" placeholder="Staff Name">
+            <button type="submit">Confirm Booking</button>
+        </form>
+    </div>
+
     <script>
+        function openBookingPopup() {
+            document.getElementById("addBookingForm").style.display = "block";
+        }
+
+        document.getElementById("addBookingData").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let formData = new FormData(this);
+
+            fetch("/book", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+        });
+
         document.addEventListener("DOMContentLoaded", function () {
             let calendarEl = document.getElementById("calendar");
 

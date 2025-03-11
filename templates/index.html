@@ -8,30 +8,20 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; }
-        #calendar { max-width: 1200px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
-        #addBookingBtn { position: fixed; bottom: 30px; right: 30px; background: #4CAF50; color: #fff; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 24px; cursor: pointer; }
-        #bookingForm { display: none; background: #fff; border: 2px solid #4CAF50; padding: 20px; position: absolute; top: 20%; left: 35%; width: 30%; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 10px; z-index: 1000; }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; }
+        #calendar { flex: 3; max-width: 70%; margin: 40px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        #bookingDetails { flex: 1; background: #fff; margin: 40px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        .booking-card { background: #f0f0f0; padding: 10px; margin-bottom: 10px; border-left: 5px solid #4CAF50; }
+        .pending { border-left: 5px solid #FF6347; }
     </style>
 </head>
 <body>
 
-    <h1 style="text-align: center;">Hotel Booking System</h1>
     <div id="calendar"></div>
 
-    <button id="addBookingBtn" onclick="openBookingPopup()">+</button>
-
-    <div id="bookingForm">
-        <h2>Book a Room</h2>
-        <form id="addBookingForm">
-            <input type="text" name="customer" placeholder="Customer Name" required><br>
-            <input type="text" name="room" placeholder="Room Number" required><br>
-            <input type="text" name="room_type" placeholder="Room Type" required><br>
-            <input type="date" name="checkin" required><br>
-            <input type="date" name="checkout" required><br>
-            <button type="submit">Confirm Booking</button>
-            <button type="button" onclick="closeBookingPopup()">Cancel</button>
-        </form>
+    <div id="bookingDetails">
+        <h2>Booking Details</h2>
+        <div id="detailsContent">Click on a date to see bookings.</div>
     </div>
 
     <script>
@@ -44,34 +34,32 @@
                 editable: true,
                 events: "/get_bookings",
                 dateClick: function (info) {
-                    openBookingPopup(info.dateStr);
+                    fetch(`/get_booking_details/${info.dateStr}`)
+                        .then(response => response.json())
+                        .then(data => displayBookingDetails(data, info.dateStr));
                 }
             });
 
             calendar.render();
         });
 
-        function openBookingPopup(date = "") {
-            document.querySelector("#bookingForm").style.display = "block";
-            document.querySelector("[name=checkin]").value = date;
+        function displayBookingDetails(data, date) {
+            let detailsDiv = document.getElementById("detailsContent");
+
+            if (data.length === 0) {
+                detailsDiv.innerHTML = `<p>No bookings on ${date}.</p>`;
+            } else {
+                let content = data.map(booking => `
+                    <div class="booking-card ${booking.payment_status === 'Pending' ? 'pending' : ''}">
+                        <p><strong>Customer:</strong> ${booking.customer}</p>
+                        <p><strong>Room:</strong> ${booking.room}</p>
+                        <p><strong>Check-in:</strong> ${booking.checkin_date}</p>
+                        <p><strong>Check-out:</strong> ${booking.checkout_date}</p>
+                    </div>
+                `).join("");
+                detailsDiv.innerHTML = content;
+            }
         }
-
-        function closeBookingPopup() {
-            document.querySelector("#bookingForm").style.display = "none";
-        }
-
-        document.querySelector("#addBookingForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-            let formData = new FormData(this);
-
-            fetch("/book", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    closeBookingPopup();
-                    location.reload();
-                });
-        });
     </script>
 
 </body>

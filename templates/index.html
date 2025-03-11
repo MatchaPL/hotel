@@ -11,16 +11,13 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales-all.min.js"></script>
     
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #calendar {
-            max-width: 900px;
-            margin: 40px auto;
-        }
-        .fc-daygrid-day {
-            cursor: pointer;
-        }
+        body { font-family: Arial, sans-serif; }
+        #calendar { max-width: 900px; margin: 40px auto; }
+        .fc-daygrid-day { cursor: pointer; }
+        #bookingDetails { display: none; background: #fff; border: 2px solid #4CAF50; padding: 20px; position: absolute; top: 20%; left: 35%; width: 30%; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 10px; z-index: 1000; }
+        #bookingDetails h2 { text-align: center; color: #4CAF50; }
+        #bookingDetails button { margin-top: 10px; width: 100%; background-color: #ff4d4d; color: #fff; border: none; padding: 8px 0; cursor: pointer; border-radius: 5px; }
+        #closePopup { background-color: #4CAF50; color: #fff; }
     </style>
 </head>
 <body>
@@ -29,22 +26,10 @@
     <button onclick="openBookingForm()" style="display: block; margin: 0 auto;">+ Add Booking</button>
     <div id="calendar"></div>
 
-    <!-- Booking Form Modal -->
-    <div id="bookingModal" style="display: none;">
-        <h2>Book a Room</h2>
-        <form id="bookingForm">
-            <input type="text" name="customer" placeholder="Customer Name" required><br>
-            <input type="text" name="room" placeholder="Room Number" required><br>
-            <input type="text" name="room_type" placeholder="Room Type"><br>
-            <input type="text" name="phone" placeholder="Phone Number" required><br>
-            <input type="text" name="channel" placeholder="Booking Channel"><br>
-            <label>Check-in Date:</label>
-            <input type="date" name="checkin" required><br>
-            <label>Check-out Date:</label>
-            <input type="date" name="checkout" required><br>
-            <button type="submit">Confirm Booking</button>
-            <button type="button" onclick="closeBookingForm()">Cancel</button>
-        </form>
+    <div id="bookingDetails">
+        <h2>Booking Details</h2>
+        <div id="detailsContent"></div>
+        <button id="closePopup" onclick="closeDetailsPopup()">Close</button>
     </div>
 
     <script>
@@ -57,7 +42,9 @@
                 editable: true,
                 events: "/get_bookings",
                 dateClick: function (info) {
-                    openBookingForm(info.dateStr);
+                    fetch(`/get_booking_details/${info.dateStr}`)
+                        .then(response => response.json())
+                        .then(data => displayBookingDetails(data, info.dateStr));
                 },
                 eventClick: function (info) {
                     let confirmCancel = confirm("Cancel this booking?");
@@ -75,27 +62,29 @@
             calendar.render();
         });
 
-        function openBookingForm(date = "") {
-            document.querySelector("#bookingModal").style.display = "block";
-            document.querySelector("[name=checkin]").value = date;
+        function displayBookingDetails(data, date) {
+            let detailsDiv = document.getElementById("bookingDetails");
+            let contentDiv = document.getElementById("detailsContent");
+
+            if (data.length === 0) {
+                contentDiv.innerHTML = `<p>No bookings on ${date}.</p>`;
+            } else {
+                let content = data.map(booking => `
+                    <p><strong>Customer:</strong> ${booking.customer}</p>
+                    <p><strong>Room:</strong> ${booking.room}</p>
+                    <p><strong>Check-in:</strong> ${booking.checkin_date}</p>
+                    <p><strong>Check-out:</strong> ${booking.checkout_date}</p>
+                    <hr>
+                `).join("");
+                contentDiv.innerHTML = content;
+            }
+
+            detailsDiv.style.display = "block";
         }
 
-        function closeBookingForm() {
-            document.querySelector("#bookingModal").style.display = "none";
+        function closeDetailsPopup() {
+            document.getElementById("bookingDetails").style.display = "none";
         }
-
-        document.querySelector("#bookingForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-            let formData = new FormData(this);
-
-            fetch("/book", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    closeBookingForm();
-                    location.reload();
-                });
-        });
     </script>
 
 </body>

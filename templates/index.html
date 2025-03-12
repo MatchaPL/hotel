@@ -8,13 +8,23 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; }
-        #calendar { flex: 3; max-width: 70%; margin: 40px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
-        #bookingDetails { flex: 1; background: #fff; margin: 40px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
-        .booking-card { background: #f0f0f0; padding: 10px; margin-bottom: 10px; border-left: 5px solid #4CAF50; }
-        .pending { border-left: 5px solid #FF6347; }
-        
-        /* Popup Styles */
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f6f9; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        #calendar { 
+            flex: 3; 
+            max-width: 100%; 
+            margin: 20px; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+        }
+
         .popup-overlay {
             display: none;
             position: fixed;
@@ -22,20 +32,24 @@
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
         }
+
         .popup-content {
             background-color: #fff;
             padding: 20px;
-            width: 400px;
+            width: 90%;
+            max-width: 400px;
             border-radius: 10px;
             margin: 10% auto;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
+
         .popup-content input,
         .popup-content button {
             width: 100%;
             padding: 8px;
             margin-top: 8px;
         }
+
         .popup-content .cancel-btn {
             background-color: #FF6347;
             color: #fff;
@@ -121,32 +135,13 @@
                 editable: true,
                 events: "/get_bookings",
                 dateClick: function (info) {
-                    fetch(`/get_booking_details/${info.dateStr}`)
-                        .then(response => response.json())
-                        .then(data => displayBookingDetails(data, info.dateStr));
+                    openBookingPopup();
+                    document.querySelector("[name=checkin_date]").value = info.dateStr;
                 }
             });
 
             calendar.render();
         });
-
-        function displayBookingDetails(data, date) {
-            let detailsDiv = document.getElementById("detailsContent");
-
-            if (data.length === 0) {
-                detailsDiv.innerHTML = `<p>No bookings on ${date}.</p>`;
-            } else {
-                let content = data.map(booking => `
-                    <div class="booking-card ${booking.payment_status === 'Pending' ? 'pending' : ''}">
-                        <p><strong>Customer:</strong> ${booking.customer}</p>
-                        <p><strong>Room:</strong> ${booking.room}</p>
-                        <p><strong>Check-in:</strong> ${booking.checkin_date}</p>
-                        <p><strong>Check-out:</strong> ${booking.checkout_date}</p>
-                    </div>
-                `).join("");
-                detailsDiv.innerHTML = content;
-            }
-        }
     </script>
 
 </body>

@@ -70,6 +70,17 @@ def book_room():
     data = request.form.to_dict()
     data["booking_id"] = str(uuid.uuid4())
 
+    # เพิ่มการตรวจสอบข้อมูลที่ขาดหาย
+    required_fields = [
+        "room", "customer", "checkin_date", "checkout_date", 
+        "nights", "total_price", "phone_number", "room_type", 
+        "payment_status", "payment_method"
+    ]
+
+    for field in required_fields:
+        if field not in data or not data[field].strip():
+            return jsonify({"message": f"{field} is required!"}), 400
+
     conn = get_db_connection()
     if conn is None:
         return jsonify({"message": "Database connection failed!"}), 500
@@ -80,14 +91,27 @@ def book_room():
             (room, customer, channel, checkin_date, checkout_date, nights, total_price, status, booking_id, 
             phone_number, room_type, payment_status, payment_method, deposit_status, payment_date, 
             payment_proof, received_by, discount, booking_status, staff_name) 
-            VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin)s, %(checkout)s, %(nights)s, %(total_price)s, 
-            'booked', %(booking_id)s, %(phone)s, %(room_type)s, %(payment_status)s, %(payment)s, 
+            VALUES (%(room)s, %(customer)s, %(channel)s, %(checkin_date)s, %(checkout_date)s, %(nights)s, %(total_price)s, 
+            'booked', %(booking_id)s, %(phone_number)s, %(room_type)s, %(payment_status)s, %(payment_method)s, 
             %(deposit_status)s, %(payment_date)s, %(payment_proof)s, %(received_by)s, %(discount)s, 
             %(booking_status)s, %(staff_name)s)
         """, data)
         conn.commit()
 
     return jsonify({"message": "Booking successful", "room": data["room"]})
+
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
+def cancel_booking(booking_id):
+    """Cancel a booking"""
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"message": "Database connection failed!"}), 500
+
+    with conn.cursor() as cursor:
+        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        conn.commit()
+
+    return jsonify({"message": "Booking cancelled"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
